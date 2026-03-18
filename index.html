@@ -51,7 +51,7 @@ body{font-family:'Inter',sans-serif;background:#0f172a;color:#e2e8f0;display:fle
 <!-- SIDEBAR -->
 <nav class="sidebar">
   <div class="sidebar-header">
-    <img src="https://770lab.github.io/koulam/assets/icons/icon-192.png" alt="Koulam" style="width:70px;height:70px;border-radius:12px;">
+    <img src="logo.png" alt="Koulam" style="width:70px;height:70px;border-radius:12px;">
   </div>
   <ul class="nav-menu">
     <li class="nav-item active" onclick="switchTab('dashboard')">📊 <span>Dashboard</span></li>
@@ -206,10 +206,12 @@ async function loadAll(){
     _allVideos=[];
     vSnap.forEach(function(d){var v=d.data();v._id=d.id;_allVideos.push(v);});
 
-    // Notifications (last 100)
-    var nSnap=await db.collection('notifications').orderBy('createdAt','desc').limit(100).get();
-    _allNotifs=[];
-    nSnap.forEach(function(d){var n=d.data();n._id=d.id;_allNotifs.push(n);});
+    // Notifications (last 100) — nécessite auth, skip si pas connecté
+    try{
+      var nSnap=await db.collection('notifications').orderBy('createdAt','desc').limit(100).get();
+      _allNotifs=[];
+      nSnap.forEach(function(d){var n=d.data();n._id=d.id;_allNotifs.push(n);});
+    }catch(e){console.warn('[NOTIFS] Permissions insuffisantes (auth requise):',e.message);_allNotifs=[];}
 
     document.getElementById('fbStatus').innerHTML='<span style="color:#22c55e;">✅ Firebase OK</span><br>'+_allUsers.length+' users · '+_allPosts.length+' posts';
     renderDashboard();
