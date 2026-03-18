@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Koulam Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Inter',sans-serif;background:#0f172a;color:#e2e8f0;display:flex;min-height:100vh;}
+/* Sidebar */
+.sidebar{width:220px;background:#1e293b;border-right:1px solid rgba(255,255,255,0.06);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;}
+.sidebar-header{padding:20px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.06);}
+.sidebar-header img{width:70px;height:70px;border-radius:12px;}
+.nav-menu{list-style:none;padding:12px 8px;flex:1;overflow-y:auto;}
+.nav-item{padding:10px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;color:#94a3b8;display:flex;align-items:center;gap:10px;margin-bottom:2px;transition:all 0.15s;}
+.nav-item:hover{background:rgba(255,255,255,0.05);color:#f1f5f9;}
+.nav-item.active{background:rgba(59,130,246,0.15);color:#60a5fa;font-weight:600;}
+.sidebar-footer{padding:12px;border-top:1px solid rgba(255,255,255,0.06);font-size:11px;color:#64748b;}
+/* Main */
+.main{margin-left:220px;flex:1;padding:24px;min-height:100vh;}
+.page-title{font-size:22px;font-weight:800;margin-bottom:20px;}
+/* KPI Grid */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px;}
+.kpi{border-radius:12px;padding:16px;text-align:center;color:white;}
+.kpi-value{font-size:28px;font-weight:800;}
+.kpi-label{font-size:11px;opacity:0.9;margin-top:2px;}
+.kpi-sub{font-size:10px;opacity:0.7;margin-top:4px;}
+/* Cards */
+.card{background:rgba(255,255,255,0.05);border-radius:12px;padding:16px;margin-bottom:16px;}
+.card-title{font-size:14px;font-weight:700;margin-bottom:12px;color:#f1f5f9;}
+/* Table */
+.tbl{width:100%;border-collapse:collapse;font-size:12px;}
+.tbl th{text-align:left;padding:8px;color:#64748b;font-size:10px;text-transform:uppercase;border-bottom:1px solid rgba(255,255,255,0.1);}
+.tbl td{padding:8px;border-bottom:1px solid rgba(255,255,255,0.04);}
+.tbl tr:hover{background:rgba(255,255,255,0.03);}
+/* Tabs */
+.tab{display:none;}.tab.active{display:block;}
+/* Badge */
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;color:white;}
+/* Loading */
+.loading{text-align:center;padding:40px;color:#64748b;}
+/* Responsive */
+@media(max-width:768px){.sidebar{width:60px;}.sidebar-header img{width:36px;height:36px;}.nav-item span{display:none;}.main{margin-left:60px;padding:12px;}.kpi-grid{grid-template-columns:repeat(2,1fr);}}
+</style>
+</head>
+<body>
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-header">
+    <img src="https://770lab.github.io/koulam/assets/icons/icon-192.png" alt="Koulam">
+  </div>
+  <ul class="nav-menu">
+    <li class="nav-item active" onclick="switchTab('dashboard')">📊 <span>Dashboard</span></li>
+    <li class="nav-item" onclick="switchTab('users')">👥 <span>Utilisateurs</span></li>
+    <li class="nav-item" onclick="switchTab('posts')">📱 <span>Feed / Posts</span></li>
+    <li class="nav-item" onclick="switchTab('videos')">🎬 <span>JewTube</span></li>
+    <li class="nav-item" onclick="switchTab('notifs')">🔔 <span>Notifications</span></li>
+    <li class="nav-item" onclick="switchTab('etudes')">📖 <span>Etudes</span></li>
+    <li class="nav-item" onclick="switchTab('tehilim')">🕊️ <span>Tehilim</span></li>
+    <li class="nav-item" onclick="switchTab('tefila')">🙏 <span>Tefila</span></li>
+    <li class="nav-item" onclick="switchTab('shopify')">🛍️ <span>Chabad Club</span></li>
+  </ul>
+  <div class="sidebar-footer">
+    <div id="fbStatus">⏳ Connexion Firebase...</div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+
+<!-- DASHBOARD -->
+<div class="tab active" id="tab-dashboard">
+  <div class="page-title">Dashboard Koulam</div>
+  <div class="kpi-grid" id="dashKpis"><div class="loading">Chargement...</div></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;" id="dashCharts">
+    <div class="card"><div class="card-title">📈 Derniers inscrits</div><div id="dashRecentUsers"><div class="loading">...</div></div></div>
+    <div class="card"><div class="card-title">🔥 Posts récents</div><div id="dashRecentPosts"><div class="loading">...</div></div></div>
+  </div>
+</div>
+
+<!-- USERS -->
+<div class="tab" id="tab-users">
+  <div class="page-title">👥 Utilisateurs</div>
+  <input type="text" id="userSearch" placeholder="Rechercher un utilisateur..." oninput="filterUsers()" style="width:100%;padding:10px 14px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#f1f5f9;font-size:13px;margin-bottom:16px;">
+  <div id="usersTable"><div class="loading">Chargement...</div></div>
+</div>
+
+<!-- POSTS -->
+<div class="tab" id="tab-posts">
+  <div class="page-title">📱 Feed / Posts</div>
+  <div id="postsTable"><div class="loading">Chargement...</div></div>
+</div>
+
+<!-- VIDEOS -->
+<div class="tab" id="tab-videos">
+  <div class="page-title">🎬 JewTube — Vidéos</div>
+  <div id="videosTable"><div class="loading">Chargement...</div></div>
+</div>
+
+<!-- NOTIFICATIONS -->
+<div class="tab" id="tab-notifs">
+  <div class="page-title">🔔 Notifications</div>
+  <div id="notifsTable"><div class="loading">Chargement...</div></div>
+</div>
+
+<!-- ETUDES -->
+<div class="tab" id="tab-etudes">
+  <div class="page-title">📖 Etudes quotidiennes</div>
+  <div id="etudesContent"><div class="loading">Chargement...</div></div>
+</div>
+
+<!-- TEHILIM -->
+<div class="tab" id="tab-tehilim">
+  <div class="page-title">🕊️ Tehilim</div>
+  <div id="tehilimContent"><div class="loading">Stats à venir</div></div>
+</div>
+
+<!-- TEFILA -->
+<div class="tab" id="tab-tefila">
+  <div class="page-title">🙏 Tefila / Prières</div>
+  <div id="tefilaContent"><div class="loading">Stats à venir</div></div>
+</div>
+
+<!-- SHOPIFY / CHABAD CLUB -->
+<div class="tab" id="tab-shopify">
+  <div class="page-title">🛍️ Chabad Club — Ventes via Koulam</div>
+  <div id="shopifyContent">
+    <div class="card">
+      <div class="card-title">Connexion Shopify</div>
+      <p style="color:#94a3b8;font-size:13px;">Les ventes provenant de l'app Koulam seront synchronisées ici et dans le Chabad Club Manager.</p>
+      <p style="margin-top:12px;"><a href="https://github.com/770lab/chabadclub-manager" target="_blank" style="color:#60a5fa;">→ Ouvrir Chabad Club Manager</a></p>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+// ============================================
+// FIREBASE INIT
+// ============================================
+var FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBRVG8tGej-3EGI2AXH1Gmpa10GTVA22tk",
+  authDomain: "chabapp-5fc3b.firebaseapp.com",
+  projectId: "chabapp-5fc3b",
+  storageBucket: "chabapp-5fc3b.firebasestorage.app",
+  messagingSenderId: "587299342390",
+  appId: "1:587299342390:web:278a1c63936d6a14e7b097"
+};
+firebase.initializeApp(FIREBASE_CONFIG);
+var db = firebase.firestore();
+var _allUsers=[], _allPosts=[], _allVideos=[], _allNotifs=[];
+
+// ============================================
+// NAVIGATION
+// ============================================
+function switchTab(tab){
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
+  document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active');});
+  var el=document.getElementById('tab-'+tab);
+  if(el) el.classList.add('active');
+  // Highlight nav
+  document.querySelectorAll('.nav-item').forEach(function(n){
+    if(n.textContent.trim().toLowerCase().indexOf(tab)>=0 || n.onclick.toString().indexOf("'"+tab+"'")>=0) n.classList.add('active');
+  });
+}
+
+// ============================================
+// LOAD DATA
+// ============================================
+function esc(s){return (s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function timeAgo(d){
+  if(!d) return '--';
+  var now=Date.now(), ts=d.toDate?d.toDate().getTime():new Date(d).getTime();
+  var diff=Math.floor((now-ts)/1000);
+  if(diff<60) return diff+'s';
+  if(diff<3600) return Math.floor(diff/60)+'min';
+  if(diff<86400) return Math.floor(diff/3600)+'h';
+  return Math.floor(diff/86400)+'j';
+}
+function fmtDate(d){
+  if(!d) return '--';
+  var dt=d.toDate?d.toDate():new Date(d);
+  return dt.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+}
+
+async function loadAll(){
+  document.getElementById('fbStatus').textContent='⏳ Chargement...';
+  try{
+    // Users
+    var uSnap=await db.collection('users').get();
+    _allUsers=[];
+    uSnap.forEach(function(d){var u=d.data();u._id=d.id;_allUsers.push(u);});
+
+    // Posts
+    var pSnap=await db.collection('posts').orderBy('createdAt','desc').limit(200).get();
+    _allPosts=[];
+    pSnap.forEach(function(d){var p=d.data();p._id=d.id;_allPosts.push(p);});
+
+    // Videos
+    var vSnap=await db.collection('yt_videos').limit(200).get();
+    _allVideos=[];
+    vSnap.forEach(function(d){var v=d.data();v._id=d.id;_allVideos.push(v);});
+
+    // Notifications (last 100)
+    var nSnap=await db.collection('notifications').orderBy('createdAt','desc').limit(100).get();
+    _allNotifs=[];
+    nSnap.forEach(function(d){var n=d.data();n._id=d.id;_allNotifs.push(n);});
+
+    document.getElementById('fbStatus').innerHTML='<span style="color:#22c55e;">✅ Firebase OK</span><br>'+_allUsers.length+' users · '+_allPosts.length+' posts';
+    renderDashboard();
+    renderUsers();
+    renderPosts();
+    renderVideos();
+    renderNotifs();
+    renderEtudes();
+  }catch(err){
+    document.getElementById('fbStatus').innerHTML='<span style="color:#ef4444;">❌ '+err.message+'</span>';
+    console.error(err);
+  }
+}
+
+// ============================================
+// DASHBOARD
+// ============================================
+function renderDashboard(){
+  var totalUsers=_allUsers.length;
+  var totalPosts=_allPosts.length;
+  var totalVideos=_allVideos.length;
+  var totalNotifs=_allNotifs.length;
+
+  // Users this week
+  var weekAgo=Date.now()-7*86400000;
+  var newUsersWeek=_allUsers.filter(function(u){
+    if(!u.createdAt) return false;
+    var ts=u.createdAt.toDate?u.createdAt.toDate().getTime():new Date(u.createdAt).getTime();
+    return ts>weekAgo;
+  }).length;
+
+  // Posts this week
+  var newPostsWeek=_allPosts.filter(function(p){
+    if(!p.createdAt) return false;
+    var ts=p.createdAt.toDate?p.createdAt.toDate().getTime():new Date(p.createdAt).getTime();
+    return ts>weekAgo;
+  }).length;
+
+  // Total likes
+  var totalLikes=0;
+  _allPosts.forEach(function(p){totalLikes+=(p.likesCount||p.likes||0);});
+
+  // Total comments
+  var totalComments=0;
+  _allPosts.forEach(function(p){totalComments+=(p.commentsCount||p.comments||0);});
+
+  var h='';
+  h+='<div class="kpi" style="background:linear-gradient(135deg,#3b82f6,#2563eb);"><div class="kpi-value">'+totalUsers+'</div><div class="kpi-label">UTILISATEURS</div><div class="kpi-sub">+'+newUsersWeek+' cette semaine</div></div>';
+  h+='<div class="kpi" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed);"><div class="kpi-value">'+totalPosts+'</div><div class="kpi-label">POSTS</div><div class="kpi-sub">+'+newPostsWeek+' cette semaine</div></div>';
+  h+='<div class="kpi" style="background:linear-gradient(135deg,#ec4899,#db2777);"><div class="kpi-value">'+totalLikes+'</div><div class="kpi-label">LIKES</div></div>';
+  h+='<div class="kpi" style="background:linear-gradient(135deg,#f59e0b,#d97706);"><div class="kpi-value">'+totalComments+'</div><div class="kpi-label">COMMENTAIRES</div></div>';
+  h+='<div class="kpi" style="background:linear-gradient(135deg,#ef4444,#dc2626);"><div class="kpi-value">'+totalVideos+'</div><div class="kpi-label">VIDEOS</div></div>';
+  h+='<div class="kpi" style="background:linear-gradient(135deg,#14b8a6,#0d9488);"><div class="kpi-value">'+totalNotifs+'</div><div class="kpi-label">NOTIFICATIONS</div></div>';
+  document.getElementById('dashKpis').innerHTML=h;
+
+  // Recent users
+  var ru=_allUsers.slice().sort(function(a,b){
+    var ta=a.createdAt?(a.createdAt.toDate?a.createdAt.toDate().getTime():new Date(a.createdAt).getTime()):0;
+    var tb=b.createdAt?(b.createdAt.toDate?b.createdAt.toDate().getTime():new Date(b.createdAt).getTime()):0;
+    return tb-ta;
+  }).slice(0,8);
+  var ruh='';
+  ru.forEach(function(u){
+    ruh+='<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);">';
+    ruh+='<img src="'+(u.photoURL||'https://ui-avatars.com/api/?name='+encodeURIComponent(u.displayName||'?')+'&background=3b82f6&color=fff&size=32')+'" style="width:28px;height:28px;border-radius:50%;object-fit:cover;">';
+    ruh+='<div><div style="font-size:12px;font-weight:600;">'+esc(u.displayName||'Anonyme')+'</div>';
+    ruh+='<div style="font-size:10px;color:#64748b;">'+timeAgo(u.createdAt)+'</div></div></div>';
+  });
+  document.getElementById('dashRecentUsers').innerHTML=ruh||'<div class="loading">Aucun</div>';
+
+  // Recent posts
+  var rp=_allPosts.slice(0,8);
+  var rph='';
+  rp.forEach(function(p){
+    rph+='<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);">';
+    rph+='<div style="font-size:12px;font-weight:600;">'+esc(p.authorName||'?')+'</div>';
+    rph+='<div style="font-size:11px;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:300px;">'+esc((p.text||'').substring(0,80))+'</div>';
+    rph+='<div style="font-size:10px;color:#64748b;">'+timeAgo(p.createdAt)+' · ❤️ '+(p.likesCount||0)+' · 💬 '+(p.commentsCount||0)+'</div>';
+    rph+='</div>';
+  });
+  document.getElementById('dashRecentPosts').innerHTML=rph||'<div class="loading">Aucun</div>';
+}
+
+// ============================================
+// USERS
+// ============================================
+function renderUsers(){
+  var h='<table class="tbl"><thead><tr><th>Avatar</th><th>Nom</th><th>Email</th><th>Bio</th><th>Followers</th><th>Following</th><th>Posts</th><th>Inscrit</th></tr></thead><tbody>';
+  _allUsers.sort(function(a,b){return (b.followersCount||0)-(a.followersCount||0);});
+  _allUsers.forEach(function(u){
+    h+='<tr>';
+    h+='<td><img src="'+(u.photoURL||'https://ui-avatars.com/api/?name='+encodeURIComponent(u.displayName||'?')+'&background=3b82f6&color=fff&size=28')+'" style="width:28px;height:28px;border-radius:50%;object-fit:cover;"></td>';
+    h+='<td style="font-weight:600;">'+esc(u.displayName||'--')+'</td>';
+    h+='<td style="color:#64748b;font-size:11px;">'+esc(u.email||'--')+'</td>';
+    h+='<td style="color:#94a3b8;font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(u.bio||'')+'</td>';
+    h+='<td style="text-align:center;">'+(u.followersCount||0)+'</td>';
+    h+='<td style="text-align:center;">'+(u.followingCount||0)+'</td>';
+    h+='<td style="text-align:center;">'+(u.postsCount||0)+'</td>';
+    h+='<td style="font-size:11px;color:#64748b;">'+fmtDate(u.createdAt)+'</td>';
+    h+='</tr>';
+  });
+  h+='</tbody></table>';
+  document.getElementById('usersTable').innerHTML=h;
+}
+function filterUsers(){
+  var q=(document.getElementById('userSearch').value||'').toLowerCase();
+  var rows=document.querySelectorAll('#usersTable tbody tr');
+  rows.forEach(function(r){r.style.display=r.textContent.toLowerCase().indexOf(q)>=0?'':'none';});
+}
+
+// ============================================
+// POSTS
+// ============================================
+function renderPosts(){
+  var h='<table class="tbl"><thead><tr><th>Auteur</th><th>Contenu</th><th>Image</th><th>❤️</th><th>💬</th><th>Type</th><th>Date</th></tr></thead><tbody>';
+  _allPosts.forEach(function(p){
+    h+='<tr>';
+    h+='<td style="font-weight:600;font-size:12px;">'+esc(p.authorName||'?')+'</td>';
+    h+='<td style="color:#cbd5e1;font-size:11px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc((p.text||'').substring(0,100))+'</td>';
+    h+='<td>'+(p.imageURL?'<img src="'+p.imageURL+'" style="width:36px;height:36px;border-radius:6px;object-fit:cover;">':'--')+'</td>';
+    h+='<td style="text-align:center;">'+(p.likesCount||0)+'</td>';
+    h+='<td style="text-align:center;">'+(p.commentsCount||0)+'</td>';
+    h+='<td><span class="badge" style="background:'+(p.type==='story'?'#ec4899':'#3b82f6')+';">'+(p.type||'post')+'</span></td>';
+    h+='<td style="font-size:11px;color:#64748b;">'+fmtDate(p.createdAt)+'</td>';
+    h+='</tr>';
+  });
+  h+='</tbody></table>';
+  document.getElementById('postsTable').innerHTML=h;
+}
+
+// ============================================
+// VIDEOS
+// ============================================
+function renderVideos(){
+  var h='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">';
+  _allVideos.forEach(function(v){
+    h+='<div class="card" style="padding:0;overflow:hidden;">';
+    if(v.thumbnail) h+='<img src="'+v.thumbnail+'" style="width:100%;height:150px;object-fit:cover;">';
+    h+='<div style="padding:10px;">';
+    h+='<div style="font-size:12px;font-weight:600;margin-bottom:4px;">'+esc(v.title||'--')+'</div>';
+    h+='<div style="font-size:10px;color:#64748b;">'+esc(v.channelTitle||'')+'</div>';
+    h+='</div></div>';
+  });
+  h+='</div>';
+  document.getElementById('videosTable').innerHTML=h;
+}
+
+// ============================================
+// NOTIFICATIONS
+// ============================================
+function renderNotifs(){
+  var h='<table class="tbl"><thead><tr><th>De</th><th>Pour</th><th>Type</th><th>Message</th><th>Lu</th><th>Date</th></tr></thead><tbody>';
+  _allNotifs.forEach(function(n){
+    h+='<tr>';
+    h+='<td style="font-size:12px;">'+esc(n.fromName||n.fromUid||'?')+'</td>';
+    h+='<td style="font-size:12px;">'+esc(n.toName||n.toUid||'?')+'</td>';
+    h+='<td><span class="badge" style="background:#6366f1;">'+esc(n.type||'--')+'</span></td>';
+    h+='<td style="font-size:11px;color:#94a3b8;max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(n.message||n.body||'')+'</td>';
+    h+='<td>'+(n.read?'✅':'⬜')+'</td>';
+    h+='<td style="font-size:11px;color:#64748b;">'+fmtDate(n.createdAt)+'</td>';
+    h+='</tr>';
+  });
+  h+='</tbody></table>';
+  document.getElementById('notifsTable').innerHTML=h;
+}
+
+// ============================================
+// ETUDES
+// ============================================
+function renderEtudes(){
+  var h='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;">';
+  h+='<div class="card"><div class="card-title">📅 Hayom Yom</div><p style="color:#94a3b8;font-size:13px;">Message du jour du Rabbi — chargé depuis hyy-data.json</p><div style="margin-top:8px;"><span class="badge" style="background:#22c55e;">365 jours</span></div></div>';
+  h+='<div class="card"><div class="card-title">📕 Tanya</div><p style="color:#94a3b8;font-size:13px;">Cours quotidien de Hassidout</p><div style="margin-top:8px;"><span class="badge" style="background:#8b5cf6;">Quotidien</span></div></div>';
+  h+='<div class="card"><div class="card-title">📘 Rambam</div><p style="color:#94a3b8;font-size:13px;">1 loi par jour — Mishneh Torah</p><div style="margin-top:8px;"><span class="badge" style="background:#3b82f6;">Quotidien</span></div></div>';
+  h+='<div class="card"><div class="card-title">📗 Houmach</div><p style="color:#94a3b8;font-size:13px;">Paracha de la semaine avec commentaires</p><div style="margin-top:8px;"><span class="badge" style="background:#f59e0b;">Hebdomadaire</span></div></div>';
+  h+='</div>';
+  document.getElementById('etudesContent').innerHTML=h;
+}
+
+// ============================================
+// INIT
+// ============================================
+loadAll();
+</script>
+</body>
+</html>
