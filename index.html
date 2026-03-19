@@ -8,6 +8,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Inter',sans-serif;background:#0f172a;color:#e2e8f0;display:flex;min-height:100vh;}
@@ -24,14 +25,19 @@ body{font-family:'Inter',sans-serif;background:#0f172a;color:#e2e8f0;display:fle
 .main{margin-left:220px;flex:1;padding:24px;min-height:100vh;}
 .page-title{font-size:22px;font-weight:800;margin-bottom:20px;}
 /* KPI Grid */
-.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px;}
-.kpi{border-radius:12px;padding:16px;text-align:center;color:white;}
-.kpi-value{font-size:28px;font-weight:800;}
-.kpi-label{font-size:11px;opacity:0.9;margin-top:2px;}
-.kpi-sub{font-size:10px;opacity:0.7;margin-top:4px;}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px;}
+.kpi{border-radius:12px;padding:16px;text-align:center;color:white;position:relative;overflow:hidden;}
+.kpi::after{content:'';position:absolute;top:-20px;right:-20px;width:60px;height:60px;border-radius:50%;background:rgba(255,255,255,0.1);}
+.kpi-value{font-size:28px;font-weight:800;position:relative;z-index:1;}
+.kpi-label{font-size:11px;opacity:0.9;margin-top:2px;position:relative;z-index:1;}
+.kpi-sub{font-size:10px;opacity:0.7;margin-top:4px;position:relative;z-index:1;}
 /* Cards */
-.card{background:rgba(255,255,255,0.05);border-radius:12px;padding:16px;margin-bottom:16px;}
+.card{background:rgba(255,255,255,0.05);border-radius:12px;padding:16px;margin-bottom:16px;border:1px solid rgba(255,255,255,0.06);}
 .card-title{font-size:14px;font-weight:700;margin-bottom:12px;color:#f1f5f9;}
+/* Chart grid */
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+.chart-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px;}
+.chart-container{position:relative;height:220px;}
 /* Table */
 .tbl{width:100%;border-collapse:collapse;font-size:12px;}
 .tbl th{text-align:left;padding:8px;color:#64748b;font-size:10px;text-transform:uppercase;border-bottom:1px solid rgba(255,255,255,0.1);}
@@ -43,8 +49,13 @@ body{font-family:'Inter',sans-serif;background:#0f172a;color:#e2e8f0;display:fle
 .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;color:white;}
 /* Loading */
 .loading{text-align:center;padding:40px;color:#64748b;}
+/* Stat row */
+.stat-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);}
+.stat-row:last-child{border-bottom:none;}
+.stat-bar-bg{flex:1;height:6px;background:rgba(255,255,255,0.08);border-radius:3px;margin:0 12px;}
+.stat-bar{height:100%;border-radius:3px;transition:width 0.5s ease;}
 /* Responsive */
-@media(max-width:768px){.sidebar{width:60px;}.sidebar-header img{width:36px;height:36px;}.nav-item span{display:none;}.main{margin-left:60px;padding:12px;}.kpi-grid{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:768px){.sidebar{width:60px;}.sidebar-header img{width:36px;height:36px;}.nav-item span{display:none;}.main{margin-left:60px;padding:12px;}.kpi-grid{grid-template-columns:repeat(2,1fr);}.chart-grid,.chart-grid-3{grid-template-columns:1fr;}}
 </style>
 </head>
 <body>
@@ -76,9 +87,57 @@ body{font-family:'Inter',sans-serif;background:#0f172a;color:#e2e8f0;display:fle
 <div class="tab active" id="tab-dashboard">
   <div class="page-title">Dashboard Koulam</div>
   <div class="kpi-grid" id="dashKpis"><div class="loading">Chargement...</div></div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;" id="dashCharts">
-    <div class="card"><div class="card-title">📈 Derniers inscrits</div><div id="dashRecentUsers"><div class="loading">...</div></div></div>
-    <div class="card"><div class="card-title">🔥 Posts récents</div><div id="dashRecentPosts"><div class="loading">...</div></div></div>
+
+  <!-- Row 1: Timeline inscriptions + Activite posts -->
+  <div class="chart-grid">
+    <div class="card">
+      <div class="card-title">📈 Inscriptions dans le temps</div>
+      <div class="chart-container"><canvas id="chartUsersTimeline"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">📊 Activite des posts (par jour)</div>
+      <div class="chart-container"><canvas id="chartPostsActivity"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Row 2: Engagement doughnut + Top users + Post types -->
+  <div class="chart-grid-3">
+    <div class="card">
+      <div class="card-title">💖 Engagement global</div>
+      <div class="chart-container"><canvas id="chartEngagement"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">🏆 Top contributeurs</div>
+      <div class="chart-container"><canvas id="chartTopUsers"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">📋 Types de posts</div>
+      <div class="chart-container"><canvas id="chartPostTypes"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Row 3: Likes per post bar + Growth rate -->
+  <div class="chart-grid">
+    <div class="card">
+      <div class="card-title">❤️ Likes par post (top 10)</div>
+      <div class="chart-container"><canvas id="chartLikesPerPost"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">📅 Croissance utilisateurs (cumule)</div>
+      <div class="chart-container"><canvas id="chartGrowth"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Row 4: Recent users + Recent posts lists -->
+  <div class="chart-grid">
+    <div class="card"><div class="card-title">🆕 Derniers inscrits</div><div id="dashRecentUsers"><div class="loading">...</div></div></div>
+    <div class="card"><div class="card-title">🔥 Posts recents</div><div id="dashRecentPosts"><div class="loading">...</div></div></div>
+  </div>
+
+  <!-- Row 5: User engagement leaderboard -->
+  <div class="card">
+    <div class="card-title">🥇 Classement engagement utilisateurs</div>
+    <div id="dashLeaderboard"><div class="loading">...</div></div>
   </div>
 </div>
 
@@ -97,7 +156,7 @@ body{font-family:'Inter',sans-serif;background:#0f172a;color:#e2e8f0;display:fle
 
 <!-- VIDEOS -->
 <div class="tab" id="tab-videos">
-  <div class="page-title">🎬 JewTube — Vidéos</div>
+  <div class="page-title">🎬 JewTube — Videos</div>
   <div id="videosTable"><div class="loading">Chargement...</div></div>
 </div>
 
@@ -116,13 +175,13 @@ body{font-family:'Inter',sans-serif;background:#0f172a;color:#e2e8f0;display:fle
 <!-- TEHILIM -->
 <div class="tab" id="tab-tehilim">
   <div class="page-title">🕊️ Tehilim</div>
-  <div id="tehilimContent"><div class="loading">Stats à venir</div></div>
+  <div id="tehilimContent"><div class="loading">Stats a venir</div></div>
 </div>
 
 <!-- TEFILA -->
 <div class="tab" id="tab-tefila">
-  <div class="page-title">🙏 Tefila / Prières</div>
-  <div id="tefilaContent"><div class="loading">Stats à venir</div></div>
+  <div class="page-title">🙏 Tefila / Prieres</div>
+  <div id="tefilaContent"><div class="loading">Stats a venir</div></div>
 </div>
 
 <!-- SHOPIFY / CHABAD CLUB -->
@@ -131,7 +190,7 @@ body{font-family:'Inter',sans-serif;background:#0f172a;color:#e2e8f0;display:fle
   <div id="shopifyContent">
     <div class="card">
       <div class="card-title">Connexion Shopify</div>
-      <p style="color:#94a3b8;font-size:13px;">Les ventes provenant de l'app Koulam seront synchronisées ici et dans le Chabad Club Manager.</p>
+      <p style="color:#94a3b8;font-size:13px;">Les ventes provenant de l'app Koulam seront synchronisees ici et dans le Chabad Club Manager.</p>
       <p style="margin-top:12px;"><a href="https://github.com/770lab/chabadclub-manager" target="_blank" style="color:#60a5fa;">→ Ouvrir Chabad Club Manager</a></p>
     </div>
   </div>
@@ -154,6 +213,12 @@ var FIREBASE_CONFIG = {
 firebase.initializeApp(FIREBASE_CONFIG);
 var db = firebase.firestore();
 var _allUsers=[], _allPosts=[], _allVideos=[], _allNotifs=[];
+var _charts = {};
+
+// Chart.js dark theme defaults
+Chart.defaults.color = '#94a3b8';
+Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+Chart.defaults.font.family = 'Inter';
 
 // ============================================
 // NAVIGATION
@@ -163,14 +228,13 @@ function switchTab(tab){
   document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active');});
   var el=document.getElementById('tab-'+tab);
   if(el) el.classList.add('active');
-  // Highlight nav
   document.querySelectorAll('.nav-item').forEach(function(n){
-    if(n.textContent.trim().toLowerCase().indexOf(tab)>=0 || n.onclick.toString().indexOf("'"+tab+"'")>=0) n.classList.add('active');
+    if(n.onclick && n.onclick.toString().indexOf("'"+tab+"'")>=0) n.classList.add('active');
   });
 }
 
 // ============================================
-// LOAD DATA
+// HELPERS
 // ============================================
 function esc(s){return (s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function timeAgo(d){
@@ -187,31 +251,41 @@ function fmtDate(d){
   var dt=d.toDate?d.toDate():new Date(d);
   return dt.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
 }
+function toTs(d){
+  if(!d) return 0;
+  return d.toDate?d.toDate().getTime():new Date(d).getTime();
+}
+function toDateStr(ts){
+  var d=new Date(ts);
+  return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'});
+}
+function destroyChart(id){
+  if(_charts[id]){_charts[id].destroy();delete _charts[id];}
+}
 
+// ============================================
+// LOAD DATA
+// ============================================
 async function loadAll(){
   document.getElementById('fbStatus').textContent='⏳ Chargement...';
   try{
-    // Users
     var uSnap=await db.collection('users').get();
     _allUsers=[];
     uSnap.forEach(function(d){var u=d.data();u._id=d.id;_allUsers.push(u);});
 
-    // Posts
     var pSnap=await db.collection('posts').orderBy('createdAt','desc').limit(200).get();
     _allPosts=[];
     pSnap.forEach(function(d){var p=d.data();p._id=d.id;_allPosts.push(p);});
 
-    // Videos
     var vSnap=await db.collection('yt_videos').limit(200).get();
     _allVideos=[];
     vSnap.forEach(function(d){var v=d.data();v._id=d.id;_allVideos.push(v);});
 
-    // Notifications (last 100) — nécessite auth, skip si pas connecté
     try{
       var nSnap=await db.collection('notifications').orderBy('createdAt','desc').limit(100).get();
       _allNotifs=[];
       nSnap.forEach(function(d){var n=d.data();n._id=d.id;_allNotifs.push(n);});
-    }catch(e){console.warn('[NOTIFS] Permissions insuffisantes (auth requise):',e.message);_allNotifs=[];}
+    }catch(e){console.warn('[NOTIFS]',e.message);_allNotifs=[];}
 
     document.getElementById('fbStatus').innerHTML='<span style="color:#22c55e;">✅ Firebase OK</span><br>'+_allUsers.length+' users · '+_allPosts.length+' posts';
     renderDashboard();
@@ -235,64 +309,312 @@ function renderDashboard(){
   var totalVideos=_allVideos.length;
   var totalNotifs=_allNotifs.length;
 
-  // Users this week
   var weekAgo=Date.now()-7*86400000;
-  var newUsersWeek=_allUsers.filter(function(u){
-    if(!u.createdAt) return false;
-    var ts=u.createdAt.toDate?u.createdAt.toDate().getTime():new Date(u.createdAt).getTime();
-    return ts>weekAgo;
-  }).length;
+  var monthAgo=Date.now()-30*86400000;
+  var newUsersWeek=_allUsers.filter(function(u){return toTs(u.createdAt)>weekAgo;}).length;
+  var newPostsWeek=_allPosts.filter(function(p){return toTs(p.createdAt)>weekAgo;}).length;
+  var newUsersMonth=_allUsers.filter(function(u){return toTs(u.createdAt)>monthAgo;}).length;
 
-  // Posts this week
-  var newPostsWeek=_allPosts.filter(function(p){
-    if(!p.createdAt) return false;
-    var ts=p.createdAt.toDate?p.createdAt.toDate().getTime():new Date(p.createdAt).getTime();
-    return ts>weekAgo;
-  }).length;
+  var totalLikes=0, totalComments=0;
+  _allPosts.forEach(function(p){totalLikes+=(p.likesCount||p.likes||0);totalComments+=(p.commentsCount||p.comments||0);});
 
-  // Total likes
-  var totalLikes=0;
-  _allPosts.forEach(function(p){totalLikes+=(p.likesCount||p.likes||0);});
+  var avgLikes=totalPosts>0?(totalLikes/totalPosts).toFixed(1):0;
+  var avgComments=totalPosts>0?(totalComments/totalPosts).toFixed(1):0;
+  var engagementRate=totalPosts>0?((totalLikes+totalComments)/totalPosts).toFixed(1):0;
 
-  // Total comments
-  var totalComments=0;
-  _allPosts.forEach(function(p){totalComments+=(p.commentsCount||p.comments||0);});
-
+  // KPIs
   var h='';
-  h+='<div class="kpi" style="background:linear-gradient(135deg,#3b82f6,#2563eb);"><div class="kpi-value">'+totalUsers+'</div><div class="kpi-label">UTILISATEURS</div><div class="kpi-sub">+'+newUsersWeek+' cette semaine</div></div>';
-  h+='<div class="kpi" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed);"><div class="kpi-value">'+totalPosts+'</div><div class="kpi-label">POSTS</div><div class="kpi-sub">+'+newPostsWeek+' cette semaine</div></div>';
-  h+='<div class="kpi" style="background:linear-gradient(135deg,#ec4899,#db2777);"><div class="kpi-value">'+totalLikes+'</div><div class="kpi-label">LIKES</div></div>';
-  h+='<div class="kpi" style="background:linear-gradient(135deg,#f59e0b,#d97706);"><div class="kpi-value">'+totalComments+'</div><div class="kpi-label">COMMENTAIRES</div></div>';
-  h+='<div class="kpi" style="background:linear-gradient(135deg,#ef4444,#dc2626);"><div class="kpi-value">'+totalVideos+'</div><div class="kpi-label">VIDEOS</div></div>';
-  h+='<div class="kpi" style="background:linear-gradient(135deg,#14b8a6,#0d9488);"><div class="kpi-value">'+totalNotifs+'</div><div class="kpi-label">NOTIFICATIONS</div></div>';
+  h+='<div class="kpi" style="background:linear-gradient(135deg,#3b82f6,#1d4ed8);"><div class="kpi-value">'+totalUsers+'</div><div class="kpi-label">UTILISATEURS</div><div class="kpi-sub">+'+newUsersWeek+' cette semaine</div></div>';
+  h+='<div class="kpi" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);"><div class="kpi-value">'+totalPosts+'</div><div class="kpi-label">POSTS</div><div class="kpi-sub">+'+newPostsWeek+' cette semaine</div></div>';
+  h+='<div class="kpi" style="background:linear-gradient(135deg,#ec4899,#be185d);"><div class="kpi-value">'+totalLikes+'</div><div class="kpi-label">LIKES</div><div class="kpi-sub">~'+avgLikes+'/post</div></div>';
+  h+='<div class="kpi" style="background:linear-gradient(135deg,#f59e0b,#b45309);"><div class="kpi-value">'+totalComments+'</div><div class="kpi-label">COMMENTAIRES</div><div class="kpi-sub">~'+avgComments+'/post</div></div>';
+  h+='<div class="kpi" style="background:linear-gradient(135deg,#ef4444,#b91c1c);"><div class="kpi-value">'+totalVideos+'</div><div class="kpi-label">VIDEOS</div></div>';
+  h+='<div class="kpi" style="background:linear-gradient(135deg,#14b8a6,#0f766e);"><div class="kpi-value">'+engagementRate+'</div><div class="kpi-label">ENGAGEMENT</div><div class="kpi-sub">interactions/post</div></div>';
+  h+='<div class="kpi" style="background:linear-gradient(135deg,#6366f1,#4338ca);"><div class="kpi-value">'+totalNotifs+'</div><div class="kpi-label">NOTIFICATIONS</div></div>';
   document.getElementById('dashKpis').innerHTML=h;
 
-  // Recent users
-  var ru=_allUsers.slice().sort(function(a,b){
-    var ta=a.createdAt?(a.createdAt.toDate?a.createdAt.toDate().getTime():new Date(a.createdAt).getTime()):0;
-    var tb=b.createdAt?(b.createdAt.toDate?b.createdAt.toDate().getTime():new Date(b.createdAt).getTime()):0;
-    return tb-ta;
-  }).slice(0,8);
-  var ruh='';
-  ru.forEach(function(u){
-    ruh+='<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);">';
-    ruh+='<img src="'+(u.photoURL||'https://ui-avatars.com/api/?name='+encodeURIComponent(u.displayName||'?')+'&background=3b82f6&color=fff&size=32')+'" style="width:28px;height:28px;border-radius:50%;object-fit:cover;">';
-    ruh+='<div><div style="font-size:12px;font-weight:600;">'+esc(u.displayName||'Anonyme')+'</div>';
-    ruh+='<div style="font-size:10px;color:#64748b;">'+timeAgo(u.createdAt)+'</div></div></div>';
-  });
-  document.getElementById('dashRecentUsers').innerHTML=ruh||'<div class="loading">Aucun</div>';
+  // ---- CHARTS ----
 
-  // Recent posts
-  var rp=_allPosts.slice(0,8);
-  var rph='';
-  rp.forEach(function(p){
-    rph+='<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);">';
-    rph+='<div style="font-size:12px;font-weight:600;">'+esc(p.authorName||'?')+'</div>';
-    rph+='<div style="font-size:11px;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:300px;">'+esc((p.text||'').substring(0,80))+'</div>';
-    rph+='<div style="font-size:10px;color:#64748b;">'+timeAgo(p.createdAt)+' · ❤️ '+(p.likesCount||0)+' · 💬 '+(p.commentsCount||0)+'</div>';
-    rph+='</div>';
+  // 1. Users timeline (line chart - inscriptions par jour)
+  renderUsersTimeline();
+
+  // 2. Posts activity (bar chart - posts par jour)
+  renderPostsActivity();
+
+  // 3. Engagement doughnut
+  renderEngagementChart(totalLikes, totalComments);
+
+  // 4. Top contributors (horizontal bar)
+  renderTopUsers();
+
+  // 5. Post types (pie)
+  renderPostTypes();
+
+  // 6. Likes per post (bar)
+  renderLikesPerPost();
+
+  // 7. Growth cumulative (area)
+  renderGrowthChart();
+
+  // Recent users list
+  renderRecentUsers();
+
+  // Recent posts list
+  renderRecentPosts();
+
+  // Leaderboard
+  renderLeaderboard();
+}
+
+function renderUsersTimeline(){
+  var dateMap={};
+  _allUsers.forEach(function(u){
+    var ts=toTs(u.createdAt);
+    if(!ts) return;
+    var key=new Date(ts).toISOString().split('T')[0];
+    dateMap[key]=(dateMap[key]||0)+1;
   });
-  document.getElementById('dashRecentPosts').innerHTML=rph||'<div class="loading">Aucun</div>';
+  var keys=Object.keys(dateMap).sort();
+  var labels=keys.map(function(k){var p=k.split('-');return p[2]+'/'+p[1];});
+  var data=keys.map(function(k){return dateMap[k];});
+
+  destroyChart('chartUsersTimeline');
+  var ctx=document.getElementById('chartUsersTimeline').getContext('2d');
+  _charts['chartUsersTimeline']=new Chart(ctx,{
+    type:'line',
+    data:{labels:labels,datasets:[{
+      label:'Nouveaux utilisateurs',
+      data:data,
+      borderColor:'#3b82f6',
+      backgroundColor:'rgba(59,130,246,0.15)',
+      fill:true,
+      tension:0.4,
+      pointBackgroundColor:'#3b82f6',
+      pointRadius:4,
+      pointHoverRadius:6
+    }]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}
+  });
+}
+
+function renderPostsActivity(){
+  var dateMap={};
+  _allPosts.forEach(function(p){
+    var ts=toTs(p.createdAt);
+    if(!ts) return;
+    var key=new Date(ts).toISOString().split('T')[0];
+    dateMap[key]=(dateMap[key]||0)+1;
+  });
+  var keys=Object.keys(dateMap).sort();
+  var labels=keys.map(function(k){var p=k.split('-');return p[2]+'/'+p[1];});
+  var data=keys.map(function(k){return dateMap[k];});
+
+  destroyChart('chartPostsActivity');
+  var ctx=document.getElementById('chartPostsActivity').getContext('2d');
+  _charts['chartPostsActivity']=new Chart(ctx,{
+    type:'bar',
+    data:{labels:labels,datasets:[{
+      label:'Posts',
+      data:data,
+      backgroundColor:'rgba(139,92,246,0.7)',
+      borderColor:'#8b5cf6',
+      borderWidth:1,
+      borderRadius:4
+    }]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}
+  });
+}
+
+function renderEngagementChart(likes,comments){
+  destroyChart('chartEngagement');
+  var ctx=document.getElementById('chartEngagement').getContext('2d');
+  _charts['chartEngagement']=new Chart(ctx,{
+    type:'doughnut',
+    data:{
+      labels:['Likes','Commentaires'],
+      datasets:[{
+        data:[likes,comments],
+        backgroundColor:['#ec4899','#f59e0b'],
+        borderColor:['#be185d','#b45309'],
+        borderWidth:2,
+        hoverOffset:8
+      }]
+    },
+    options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{position:'bottom',labels:{padding:16,usePointStyle:true,pointStyle:'circle'}}}}
+  });
+}
+
+function renderTopUsers(){
+  // Aggregate posts per author
+  var authorMap={};
+  _allPosts.forEach(function(p){
+    var name=p.authorName||'Anonyme';
+    if(!authorMap[name]) authorMap[name]={posts:0,likes:0,comments:0};
+    authorMap[name].posts++;
+    authorMap[name].likes+=(p.likesCount||p.likes||0);
+    authorMap[name].comments+=(p.commentsCount||p.comments||0);
+  });
+  var authors=Object.keys(authorMap).map(function(k){return {name:k,total:authorMap[k].posts+authorMap[k].likes+authorMap[k].comments,posts:authorMap[k].posts,likes:authorMap[k].likes};});
+  authors.sort(function(a,b){return b.total-a.total;});
+  authors=authors.slice(0,8);
+
+  var labels=authors.map(function(a){return a.name;});
+  var postData=authors.map(function(a){return a.posts;});
+  var likeData=authors.map(function(a){return a.likes;});
+
+  destroyChart('chartTopUsers');
+  var ctx=document.getElementById('chartTopUsers').getContext('2d');
+  _charts['chartTopUsers']=new Chart(ctx,{
+    type:'bar',
+    data:{labels:labels,datasets:[
+      {label:'Posts',data:postData,backgroundColor:'rgba(59,130,246,0.7)',borderRadius:3},
+      {label:'Likes',data:likeData,backgroundColor:'rgba(236,72,153,0.7)',borderRadius:3}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{position:'bottom',labels:{usePointStyle:true,pointStyle:'circle',padding:12}}},scales:{x:{beginAtZero:true,stacked:true},y:{stacked:true}}}
+  });
+}
+
+function renderPostTypes(){
+  var typeMap={};
+  _allPosts.forEach(function(p){
+    var t=p.type||'post';
+    typeMap[t]=(typeMap[t]||0)+1;
+  });
+  var labels=Object.keys(typeMap);
+  var data=labels.map(function(k){return typeMap[k];});
+  var colors=['#3b82f6','#ec4899','#f59e0b','#22c55e','#8b5cf6','#ef4444','#14b8a6'];
+
+  destroyChart('chartPostTypes');
+  var ctx=document.getElementById('chartPostTypes').getContext('2d');
+  _charts['chartPostTypes']=new Chart(ctx,{
+    type:'polarArea',
+    data:{labels:labels,datasets:[{
+      data:data,
+      backgroundColor:colors.slice(0,labels.length).map(function(c){return c+'bb';}),
+      borderColor:colors.slice(0,labels.length),
+      borderWidth:2
+    }]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{usePointStyle:true,pointStyle:'circle',padding:12}}}}
+  });
+}
+
+function renderLikesPerPost(){
+  var sorted=_allPosts.slice().filter(function(p){return (p.likesCount||p.likes||0)>0;}).sort(function(a,b){return (b.likesCount||b.likes||0)-(a.likesCount||a.likes||0);}).slice(0,10);
+  var labels=sorted.map(function(p){return (p.authorName||'?').substring(0,12)+'..';});
+  var data=sorted.map(function(p){return p.likesCount||p.likes||0;});
+  var commentData=sorted.map(function(p){return p.commentsCount||p.comments||0;});
+
+  destroyChart('chartLikesPerPost');
+  var ctx=document.getElementById('chartLikesPerPost').getContext('2d');
+  _charts['chartLikesPerPost']=new Chart(ctx,{
+    type:'bar',
+    data:{labels:labels,datasets:[
+      {label:'Likes',data:data,backgroundColor:'rgba(236,72,153,0.7)',borderRadius:4},
+      {label:'Commentaires',data:commentData,backgroundColor:'rgba(245,158,11,0.7)',borderRadius:4}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{usePointStyle:true,pointStyle:'circle',padding:12}}},scales:{y:{beginAtZero:true}}}
+  });
+}
+
+function renderGrowthChart(){
+  var userDates=_allUsers.map(function(u){return toTs(u.createdAt);}).filter(function(t){return t>0;}).sort();
+  if(userDates.length===0) return;
+  var labels=[],data=[];
+  userDates.forEach(function(ts,i){
+    labels.push(toDateStr(ts));
+    data.push(i+1);
+  });
+
+  destroyChart('chartGrowth');
+  var ctx=document.getElementById('chartGrowth').getContext('2d');
+  _charts['chartGrowth']=new Chart(ctx,{
+    type:'line',
+    data:{labels:labels,datasets:[{
+      label:'Total utilisateurs',
+      data:data,
+      borderColor:'#22c55e',
+      backgroundColor:'rgba(34,197,94,0.12)',
+      fill:true,
+      tension:0.3,
+      pointRadius:3,
+      pointBackgroundColor:'#22c55e'
+    }]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}
+  });
+}
+
+function renderRecentUsers(){
+  var ru=_allUsers.slice().sort(function(a,b){return toTs(b.createdAt)-toTs(a.createdAt);}).slice(0,8);
+  var h='';
+  ru.forEach(function(u){
+    h+='<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);">';
+    h+='<img src="'+(u.photoURL||'https://ui-avatars.com/api/?name='+encodeURIComponent(u.displayName||'?')+'&background=3b82f6&color=fff&size=32')+'" style="width:28px;height:28px;border-radius:50%;object-fit:cover;">';
+    h+='<div style="flex:1;"><div style="font-size:12px;font-weight:600;">'+esc(u.displayName||'Anonyme')+'</div>';
+    h+='<div style="font-size:10px;color:#64748b;">'+esc(u.email||'')+'</div></div>';
+    h+='<div style="font-size:10px;color:#64748b;">'+timeAgo(u.createdAt)+'</div>';
+    h+='</div>';
+  });
+  document.getElementById('dashRecentUsers').innerHTML=h||'<div class="loading">Aucun</div>';
+}
+
+function renderRecentPosts(){
+  var rp=_allPosts.slice(0,8);
+  var h='';
+  rp.forEach(function(p){
+    h+='<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);">';
+    h+='<div style="display:flex;align-items:center;justify-content:space-between;">';
+    h+='<div style="font-size:12px;font-weight:600;">'+esc(p.authorName||'?')+'</div>';
+    h+='<div style="font-size:10px;color:#64748b;">'+timeAgo(p.createdAt)+'</div></div>';
+    h+='<div style="font-size:11px;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:400px;">'+esc((p.text||'').substring(0,80))+'</div>';
+    h+='<div style="font-size:10px;color:#64748b;margin-top:2px;">❤️ '+(p.likesCount||0)+' · 💬 '+(p.commentsCount||0)+'</div>';
+    h+='</div>';
+  });
+  document.getElementById('dashRecentPosts').innerHTML=h||'<div class="loading">Aucun</div>';
+}
+
+function renderLeaderboard(){
+  var userEngagement=[];
+  // Aggregate from posts
+  var authorMap={};
+  _allPosts.forEach(function(p){
+    var name=p.authorName||'Anonyme';
+    if(!authorMap[name]) authorMap[name]={posts:0,likes:0,comments:0};
+    authorMap[name].posts++;
+    authorMap[name].likes+=(p.likesCount||p.likes||0);
+    authorMap[name].comments+=(p.commentsCount||p.comments||0);
+  });
+  // Also add user data (followers)
+  _allUsers.forEach(function(u){
+    var name=u.displayName||'Anonyme';
+    if(!authorMap[name]) authorMap[name]={posts:0,likes:0,comments:0};
+    authorMap[name].followers=(u.followersCount||0);
+    authorMap[name].photoURL=u.photoURL;
+  });
+
+  var entries=Object.keys(authorMap).map(function(k){
+    var a=authorMap[k];
+    return {name:k,posts:a.posts,likes:a.likes,comments:a.comments,followers:a.followers||0,score:a.posts*2+a.likes*3+a.comments*5+((a.followers||0)*1),photoURL:a.photoURL};
+  });
+  entries.sort(function(a,b){return b.score-a.score;});
+  entries=entries.slice(0,10);
+
+  var maxScore=entries.length>0?entries[0].score:1;
+  var medals=['🥇','🥈','🥉'];
+  var h='';
+  entries.forEach(function(e,i){
+    var pct=Math.round((e.score/maxScore)*100);
+    var barColor=i===0?'#f59e0b':i===1?'#94a3b8':i===2?'#b45309':'#3b82f6';
+    h+='<div class="stat-row">';
+    h+='<div style="display:flex;align-items:center;gap:8px;min-width:180px;">';
+    h+='<span style="font-size:14px;width:22px;text-align:center;">'+(medals[i]||(i+1))+'</span>';
+    h+='<img src="'+(e.photoURL||'https://ui-avatars.com/api/?name='+encodeURIComponent(e.name)+'&background=3b82f6&color=fff&size=24')+'" style="width:24px;height:24px;border-radius:50%;object-fit:cover;">';
+    h+='<span style="font-size:12px;font-weight:600;">'+esc(e.name)+'</span></div>';
+    h+='<div class="stat-bar-bg"><div class="stat-bar" style="width:'+pct+'%;background:'+barColor+';"></div></div>';
+    h+='<div style="min-width:180px;text-align:right;font-size:10px;color:#94a3b8;">';
+    h+=e.posts+' posts · '+e.likes+' ❤️ · '+e.comments+' 💬 · '+e.followers+' followers';
+    h+='</div></div>';
+  });
+  document.getElementById('dashLeaderboard').innerHTML=h||'<div class="loading">Aucune donnee</div>';
 }
 
 // ============================================
@@ -383,7 +705,7 @@ function renderNotifs(){
 // ============================================
 function renderEtudes(){
   var h='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;">';
-  h+='<div class="card"><div class="card-title">📅 Hayom Yom</div><p style="color:#94a3b8;font-size:13px;">Message du jour du Rabbi — chargé depuis hyy-data.json</p><div style="margin-top:8px;"><span class="badge" style="background:#22c55e;">365 jours</span></div></div>';
+  h+='<div class="card"><div class="card-title">📅 Hayom Yom</div><p style="color:#94a3b8;font-size:13px;">Message du jour du Rabbi — charge depuis hyy-data.json</p><div style="margin-top:8px;"><span class="badge" style="background:#22c55e;">365 jours</span></div></div>';
   h+='<div class="card"><div class="card-title">📕 Tanya</div><p style="color:#94a3b8;font-size:13px;">Cours quotidien de Hassidout</p><div style="margin-top:8px;"><span class="badge" style="background:#8b5cf6;">Quotidien</span></div></div>';
   h+='<div class="card"><div class="card-title">📘 Rambam</div><p style="color:#94a3b8;font-size:13px;">1 loi par jour — Mishneh Torah</p><div style="margin-top:8px;"><span class="badge" style="background:#3b82f6;">Quotidien</span></div></div>';
   h+='<div class="card"><div class="card-title">📗 Houmach</div><p style="color:#94a3b8;font-size:13px;">Paracha de la semaine avec commentaires</p><div style="margin-top:8px;"><span class="badge" style="background:#f59e0b;">Hebdomadaire</span></div></div>';
