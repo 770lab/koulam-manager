@@ -11,7 +11,21 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Inter',sans-serif;background:#0f172a;color:#e2e8f0;display:flex;min-height:100vh;}
+body{font-family:'Inter',sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh;}
+/* LOGIN */
+.login-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:#0f172a;z-index:9999;display:flex;align-items:center;justify-content:center;}
+.login-box{background:#1e293b;border-radius:16px;padding:40px;width:360px;text-align:center;border:1px solid rgba(255,255,255,0.08);box-shadow:0 20px 60px rgba(0,0,0,0.5);}
+.login-box img{width:80px;height:80px;border-radius:16px;margin-bottom:16px;}
+.login-box h2{font-size:20px;font-weight:800;margin-bottom:6px;}
+.login-box p{font-size:12px;color:#64748b;margin-bottom:24px;}
+.login-input{width:100%;padding:12px 16px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#f1f5f9;font-size:14px;font-family:'Inter',sans-serif;margin-bottom:12px;outline:none;transition:border 0.2s;}
+.login-input:focus{border-color:#3b82f6;}
+.login-btn{width:100%;padding:12px;background:linear-gradient(135deg,#3b82f6,#2563eb);border:none;border-radius:8px;color:white;font-size:14px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;transition:transform 0.1s;}
+.login-btn:hover{transform:scale(1.02);}
+.login-btn:active{transform:scale(0.98);}
+.login-error{color:#ef4444;font-size:12px;margin-top:12px;display:none;}
+/* APP */
+.app-wrapper{display:flex;min-height:100vh;display:none;}
 /* Sidebar */
 .sidebar{width:220px;background:#1e293b;border-right:1px solid rgba(255,255,255,0.06);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;}
 .sidebar-header{padding:20px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.06);}
@@ -21,15 +35,17 @@ body{font-family:'Inter',sans-serif;background:#0f172a;color:#e2e8f0;display:fle
 .nav-item:hover{background:rgba(255,255,255,0.05);color:#f1f5f9;}
 .nav-item.active{background:rgba(59,130,246,0.15);color:#60a5fa;font-weight:600;}
 .sidebar-footer{padding:12px;border-top:1px solid rgba(255,255,255,0.06);font-size:11px;color:#64748b;}
+.logout-btn{background:none;border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#94a3b8;font-size:11px;padding:6px 10px;cursor:pointer;margin-top:8px;width:100%;font-family:'Inter',sans-serif;}
+.logout-btn:hover{background:rgba(239,68,68,0.15);color:#ef4444;border-color:rgba(239,68,68,0.3);}
 /* Main */
 .main{margin-left:220px;flex:1;padding:24px;min-height:100vh;}
 .page-title{font-size:22px;font-weight:800;margin-bottom:20px;}
 /* KPI Grid */
-.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px;}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:24px;}
 .kpi{border-radius:12px;padding:16px;text-align:center;color:white;position:relative;overflow:hidden;}
 .kpi::after{content:'';position:absolute;top:-20px;right:-20px;width:60px;height:60px;border-radius:50%;background:rgba(255,255,255,0.1);}
-.kpi-value{font-size:28px;font-weight:800;position:relative;z-index:1;}
-.kpi-label{font-size:11px;opacity:0.9;margin-top:2px;position:relative;z-index:1;}
+.kpi-value{font-size:26px;font-weight:800;position:relative;z-index:1;}
+.kpi-label{font-size:10px;opacity:0.9;margin-top:2px;position:relative;z-index:1;text-transform:uppercase;letter-spacing:0.5px;}
 .kpi-sub{font-size:10px;opacity:0.7;margin-top:4px;position:relative;z-index:1;}
 /* Cards */
 .card{background:rgba(255,255,255,0.05);border-radius:12px;padding:16px;margin-bottom:16px;border:1px solid rgba(255,255,255,0.06);}
@@ -54,11 +70,30 @@ body{font-family:'Inter',sans-serif;background:#0f172a;color:#e2e8f0;display:fle
 .stat-row:last-child{border-bottom:none;}
 .stat-bar-bg{flex:1;height:6px;background:rgba(255,255,255,0.08);border-radius:3px;margin:0 12px;}
 .stat-bar{height:100%;border-radius:3px;transition:width 0.5s ease;}
+/* Info box */
+.info-box{background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.2);border-radius:8px;padding:12px;font-size:12px;color:#93c5fd;margin-bottom:16px;}
 /* Responsive */
-@media(max-width:768px){.sidebar{width:60px;}.sidebar-header img{width:36px;height:36px;}.nav-item span{display:none;}.main{margin-left:60px;padding:12px;}.kpi-grid{grid-template-columns:repeat(2,1fr);}.chart-grid,.chart-grid-3{grid-template-columns:1fr;}}
+@media(max-width:768px){.sidebar{width:60px;}.sidebar-header img{width:36px;height:36px;}.nav-item span{display:none;}.main{margin-left:60px;padding:12px;}.kpi-grid{grid-template-columns:repeat(2,1fr);}.chart-grid,.chart-grid-3{grid-template-columns:1fr;}.login-box{width:90%;padding:24px;}}
 </style>
 </head>
 <body>
+
+<!-- LOGIN SCREEN -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-box">
+    <img src="logo.png" alt="Koulam">
+    <h2>Koulam Manager</h2>
+    <p>Acces reserve — Entrez vos identifiants</p>
+    <input type="text" class="login-input" id="loginUser" placeholder="Utilisateur" autocomplete="off">
+    <input type="password" class="login-input" id="loginPass" placeholder="Mot de passe" autocomplete="off">
+    <button class="login-btn" onclick="doLogin()">Se connecter</button>
+    <div class="login-error" id="loginError">Identifiants incorrects</div>
+  </div>
+</div>
+
+<!-- APP (hidden until login) -->
+<div class="app-wrapper" id="appWrapper">
+
 <!-- SIDEBAR -->
 <nav class="sidebar">
   <div class="sidebar-header">
@@ -73,10 +108,12 @@ body{font-family:'Inter',sans-serif;background:#0f172a;color:#e2e8f0;display:fle
     <li class="nav-item" onclick="switchTab('etudes')">📖 <span>Etudes</span></li>
     <li class="nav-item" onclick="switchTab('tehilim')">🕊️ <span>Tehilim</span></li>
     <li class="nav-item" onclick="switchTab('tefila')">🙏 <span>Tefila</span></li>
+    <li class="nav-item" onclick="switchTab('objectifs')">🎯 <span>Objectifs</span></li>
     <li class="nav-item" onclick="switchTab('shopify')">🛍️ <span>Chabad Club</span></li>
   </ul>
   <div class="sidebar-footer">
     <div id="fbStatus">⏳ Connexion Firebase...</div>
+    <button class="logout-btn" onclick="doLogout()">Deconnexion</button>
   </div>
 </nav>
 
@@ -88,7 +125,6 @@ body{font-family:'Inter',sans-serif;background:#0f172a;color:#e2e8f0;display:fle
   <div class="page-title">Dashboard Koulam</div>
   <div class="kpi-grid" id="dashKpis"><div class="loading">Chargement...</div></div>
 
-  <!-- Row 1: Timeline inscriptions + Activite posts -->
   <div class="chart-grid">
     <div class="card">
       <div class="card-title">📈 Inscriptions dans le temps</div>
@@ -100,7 +136,6 @@ body{font-family:'Inter',sans-serif;background:#0f172a;color:#e2e8f0;display:fle
     </div>
   </div>
 
-  <!-- Row 2: Engagement doughnut + Top users + Post types -->
   <div class="chart-grid-3">
     <div class="card">
       <div class="card-title">💖 Engagement global</div>
@@ -116,7 +151,6 @@ body{font-family:'Inter',sans-serif;background:#0f172a;color:#e2e8f0;display:fle
     </div>
   </div>
 
-  <!-- Row 3: Likes per post bar + Growth rate -->
   <div class="chart-grid">
     <div class="card">
       <div class="card-title">❤️ Likes par post (top 10)</div>
@@ -128,13 +162,11 @@ body{font-family:'Inter',sans-serif;background:#0f172a;color:#e2e8f0;display:fle
     </div>
   </div>
 
-  <!-- Row 4: Recent users + Recent posts lists -->
   <div class="chart-grid">
     <div class="card"><div class="card-title">🆕 Derniers inscrits</div><div id="dashRecentUsers"><div class="loading">...</div></div></div>
     <div class="card"><div class="card-title">🔥 Posts recents</div><div id="dashRecentPosts"><div class="loading">...</div></div></div>
   </div>
 
-  <!-- Row 5: User engagement leaderboard -->
   <div class="card">
     <div class="card-title">🥇 Classement engagement utilisateurs</div>
     <div id="dashLeaderboard"><div class="loading">...</div></div>
@@ -168,20 +200,106 @@ body{font-family:'Inter',sans-serif;background:#0f172a;color:#e2e8f0;display:fle
 
 <!-- ETUDES -->
 <div class="tab" id="tab-etudes">
-  <div class="page-title">📖 Etudes quotidiennes</div>
-  <div id="etudesContent"><div class="loading">Chargement...</div></div>
+  <div class="page-title">📖 Etudes</div>
+  <div id="etudesKpis"></div>
+  <div class="chart-grid" id="etudesCharts">
+    <div class="card">
+      <div class="card-title">📚 Sessions d'etude par jour</div>
+      <div class="chart-container"><canvas id="chartEtudesTimeline"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">📕 Repartition par type d'etude</div>
+      <div class="chart-container"><canvas id="chartEtudesTypes"></canvas></div>
+    </div>
+  </div>
+  <div class="chart-grid">
+    <div class="card">
+      <div class="card-title">🏆 Top etudiants</div>
+      <div id="etudesLeaderboard"><div class="loading">...</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">📅 Contenu disponible</div>
+      <div id="etudesContent"><div class="loading">...</div></div>
+    </div>
+  </div>
 </div>
 
 <!-- TEHILIM -->
 <div class="tab" id="tab-tehilim">
   <div class="page-title">🕊️ Tehilim</div>
-  <div id="tehilimContent"><div class="loading">Stats a venir</div></div>
+  <div id="tehilimKpis"></div>
+  <div class="chart-grid">
+    <div class="card">
+      <div class="card-title">📖 Lectures de Tehilim par jour</div>
+      <div class="chart-container"><canvas id="chartTehilimTimeline"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">🔥 Chapitres les plus lus</div>
+      <div class="chart-container"><canvas id="chartTehilimPopular"></canvas></div>
+    </div>
+  </div>
+  <div class="chart-grid">
+    <div class="card">
+      <div class="card-title">🏆 Top lecteurs de Tehilim</div>
+      <div id="tehilimLeaderboard"><div class="loading">...</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">🔗 Chaines de Tehilim</div>
+      <div id="tehilimChains"><div class="loading">...</div></div>
+    </div>
+  </div>
 </div>
 
 <!-- TEFILA -->
 <div class="tab" id="tab-tefila">
   <div class="page-title">🙏 Tefila / Prieres</div>
-  <div id="tefilaContent"><div class="loading">Stats a venir</div></div>
+  <div id="tefilaKpis"></div>
+  <div class="chart-grid">
+    <div class="card">
+      <div class="card-title">📊 Prieres par type</div>
+      <div class="chart-container"><canvas id="chartTefilaTypes"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">📅 Activite priere par jour</div>
+      <div class="chart-container"><canvas id="chartTefilaTimeline"></canvas></div>
+    </div>
+  </div>
+  <div class="chart-grid">
+    <div class="card">
+      <div class="card-title">🏆 Top priants</div>
+      <div id="tefilaLeaderboard"><div class="loading">...</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">🕐 Minyanim demandes</div>
+      <div id="tefilaMinyanim"><div class="loading">...</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- OBJECTIFS -->
+<div class="tab" id="tab-objectifs">
+  <div class="page-title">🎯 Objectifs quotidiens</div>
+  <div id="objectifsKpis"></div>
+  <div class="chart-grid">
+    <div class="card">
+      <div class="card-title">📊 Completion des objectifs</div>
+      <div class="chart-container"><canvas id="chartObjectifsCompletion"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">📅 Objectifs completes par jour</div>
+      <div class="chart-container"><canvas id="chartObjectifsTimeline"></canvas></div>
+    </div>
+  </div>
+  <div class="chart-grid">
+    <div class="card">
+      <div class="card-title">🏆 Top utilisateurs objectifs</div>
+      <div id="objectifsLeaderboard"><div class="loading">...</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">📋 Liste des objectifs</div>
+      <div id="objectifsList"></div>
+    </div>
+  </div>
 </div>
 
 <!-- SHOPIFY / CHABAD CLUB -->
@@ -197,8 +315,42 @@ body{font-family:'Inter',sans-serif;background:#0f172a;color:#e2e8f0;display:fle
 </div>
 
 </div>
+</div>
 
 <script>
+// ============================================
+// AUTH — Simple login
+// ============================================
+var VALID_USER = 'ishay';
+var VALID_PASS = 'rebbe770';
+
+function doLogin(){
+  var u = document.getElementById('loginUser').value.trim().toLowerCase();
+  var p = document.getElementById('loginPass').value;
+  if(u === VALID_USER && p === VALID_PASS){
+    sessionStorage.setItem('km_auth','1');
+    document.getElementById('loginOverlay').style.display='none';
+    document.getElementById('appWrapper').style.display='flex';
+    loadAll();
+  } else {
+    document.getElementById('loginError').style.display='block';
+    document.getElementById('loginPass').value='';
+  }
+}
+function doLogout(){
+  sessionStorage.removeItem('km_auth');
+  location.reload();
+}
+// Auto-login if session
+if(sessionStorage.getItem('km_auth')==='1'){
+  document.getElementById('loginOverlay').style.display='none';
+  document.getElementById('appWrapper').style.display='flex';
+}
+// Enter key
+document.addEventListener('keydown',function(e){
+  if(e.key==='Enter' && document.getElementById('loginOverlay').style.display!=='none'){doLogin();}
+});
+
 // ============================================
 // FIREBASE INIT
 // ============================================
@@ -213,6 +365,7 @@ var FIREBASE_CONFIG = {
 firebase.initializeApp(FIREBASE_CONFIG);
 var db = firebase.firestore();
 var _allUsers=[], _allPosts=[], _allVideos=[], _allNotifs=[];
+var _allTehilim=[], _allStudies=[], _allPrayers=[], _allObjectives=[], _allMinyanim=[], _allChains=[];
 var _charts = {};
 
 // Chart.js dark theme defaults
@@ -259,41 +412,104 @@ function toDateStr(ts){
   var d=new Date(ts);
   return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'});
 }
+function toDayKey(d){
+  var ts=toTs(d);
+  if(!ts) return null;
+  return new Date(ts).toISOString().split('T')[0];
+}
 function destroyChart(id){
   if(_charts[id]){_charts[id].destroy();delete _charts[id];}
 }
+function dayKeyToLabel(k){var p=k.split('-');return p[2]+'/'+p[1];}
 
 // ============================================
 // LOAD DATA
 // ============================================
 async function loadAll(){
+  if(sessionStorage.getItem('km_auth')!=='1') return;
   document.getElementById('fbStatus').textContent='⏳ Chargement...';
   try{
+    // Users
     var uSnap=await db.collection('users').get();
     _allUsers=[];
     uSnap.forEach(function(d){var u=d.data();u._id=d.id;_allUsers.push(u);});
 
+    // Posts
     var pSnap=await db.collection('posts').orderBy('createdAt','desc').limit(200).get();
     _allPosts=[];
     pSnap.forEach(function(d){var p=d.data();p._id=d.id;_allPosts.push(p);});
 
+    // Videos
     var vSnap=await db.collection('yt_videos').limit(200).get();
     _allVideos=[];
     vSnap.forEach(function(d){var v=d.data();v._id=d.id;_allVideos.push(v);});
 
+    // Notifications
     try{
       var nSnap=await db.collection('notifications').orderBy('createdAt','desc').limit(100).get();
       _allNotifs=[];
       nSnap.forEach(function(d){var n=d.data();n._id=d.id;_allNotifs.push(n);});
     }catch(e){console.warn('[NOTIFS]',e.message);_allNotifs=[];}
 
-    document.getElementById('fbStatus').innerHTML='<span style="color:#22c55e;">✅ Firebase OK</span><br>'+_allUsers.length+' users · '+_allPosts.length+' posts';
+    // Tehilim reads
+    try{
+      var tSnap=await db.collection('tehilim_reads').orderBy('createdAt','desc').limit(500).get();
+      _allTehilim=[];
+      tSnap.forEach(function(d){var t=d.data();t._id=d.id;_allTehilim.push(t);});
+    }catch(e){console.warn('[TEHILIM]',e.message);_allTehilim=[];}
+
+    // Tehilim chains
+    try{
+      var chSnap=await db.collection('tehilim_chains').limit(100).get();
+      _allChains=[];
+      chSnap.forEach(function(d){var c=d.data();c._id=d.id;_allChains.push(c);});
+    }catch(e){console.warn('[CHAINS]',e.message);_allChains=[];}
+
+    // Study sessions
+    try{
+      var sSnap=await db.collection('study_sessions').orderBy('createdAt','desc').limit(500).get();
+      _allStudies=[];
+      sSnap.forEach(function(d){var s=d.data();s._id=d.id;_allStudies.push(s);});
+    }catch(e){console.warn('[STUDIES]',e.message);_allStudies=[];}
+
+    // Prayer logs
+    try{
+      var prSnap=await db.collection('prayer_logs').orderBy('createdAt','desc').limit(500).get();
+      _allPrayers=[];
+      prSnap.forEach(function(d){var pr=d.data();pr._id=d.id;_allPrayers.push(pr);});
+    }catch(e){console.warn('[PRAYERS]',e.message);_allPrayers=[];}
+
+    // Objectives
+    try{
+      var oSnap=await db.collection('objectives').orderBy('date','desc').limit(500).get();
+      _allObjectives=[];
+      oSnap.forEach(function(d){var o=d.data();o._id=d.id;_allObjectives.push(o);});
+    }catch(e){console.warn('[OBJECTIVES]',e.message);_allObjectives=[];}
+
+    // Minyan requests
+    try{
+      var mSnap=await db.collection('minyan_requests').limit(200).get();
+      _allMinyanim=[];
+      mSnap.forEach(function(d){var m=d.data();m._id=d.id;_allMinyanim.push(m);});
+    }catch(e){console.warn('[MINYANIM]',e.message);_allMinyanim=[];}
+
+    var statusParts=[_allUsers.length+' users',_allPosts.length+' posts'];
+    if(_allTehilim.length) statusParts.push(_allTehilim.length+' tehilim');
+    if(_allStudies.length) statusParts.push(_allStudies.length+' etudes');
+    if(_allPrayers.length) statusParts.push(_allPrayers.length+' prieres');
+    if(_allObjectives.length) statusParts.push(_allObjectives.length+' objectifs');
+
+    document.getElementById('fbStatus').innerHTML='<span style="color:#22c55e;">✅ Firebase OK</span><br>'+statusParts.join(' · ');
+
     renderDashboard();
     renderUsers();
     renderPosts();
     renderVideos();
     renderNotifs();
-    renderEtudes();
+    renderEtudesTab();
+    renderTehilimTab();
+    renderTefilaTab();
+    renderObjectifsTab();
   }catch(err){
     document.getElementById('fbStatus').innerHTML='<span style="color:#ef4444;">❌ '+err.message+'</span>';
     console.error(err);
@@ -310,235 +526,114 @@ function renderDashboard(){
   var totalNotifs=_allNotifs.length;
 
   var weekAgo=Date.now()-7*86400000;
-  var monthAgo=Date.now()-30*86400000;
   var newUsersWeek=_allUsers.filter(function(u){return toTs(u.createdAt)>weekAgo;}).length;
   var newPostsWeek=_allPosts.filter(function(p){return toTs(p.createdAt)>weekAgo;}).length;
-  var newUsersMonth=_allUsers.filter(function(u){return toTs(u.createdAt)>monthAgo;}).length;
 
   var totalLikes=0, totalComments=0;
   _allPosts.forEach(function(p){totalLikes+=(p.likesCount||p.likes||0);totalComments+=(p.commentsCount||p.comments||0);});
 
   var avgLikes=totalPosts>0?(totalLikes/totalPosts).toFixed(1):0;
-  var avgComments=totalPosts>0?(totalComments/totalPosts).toFixed(1):0;
   var engagementRate=totalPosts>0?((totalLikes+totalComments)/totalPosts).toFixed(1):0;
 
-  // KPIs
   var h='';
-  h+='<div class="kpi" style="background:linear-gradient(135deg,#3b82f6,#1d4ed8);"><div class="kpi-value">'+totalUsers+'</div><div class="kpi-label">UTILISATEURS</div><div class="kpi-sub">+'+newUsersWeek+' cette semaine</div></div>';
-  h+='<div class="kpi" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);"><div class="kpi-value">'+totalPosts+'</div><div class="kpi-label">POSTS</div><div class="kpi-sub">+'+newPostsWeek+' cette semaine</div></div>';
-  h+='<div class="kpi" style="background:linear-gradient(135deg,#ec4899,#be185d);"><div class="kpi-value">'+totalLikes+'</div><div class="kpi-label">LIKES</div><div class="kpi-sub">~'+avgLikes+'/post</div></div>';
-  h+='<div class="kpi" style="background:linear-gradient(135deg,#f59e0b,#b45309);"><div class="kpi-value">'+totalComments+'</div><div class="kpi-label">COMMENTAIRES</div><div class="kpi-sub">~'+avgComments+'/post</div></div>';
-  h+='<div class="kpi" style="background:linear-gradient(135deg,#ef4444,#b91c1c);"><div class="kpi-value">'+totalVideos+'</div><div class="kpi-label">VIDEOS</div></div>';
-  h+='<div class="kpi" style="background:linear-gradient(135deg,#14b8a6,#0f766e);"><div class="kpi-value">'+engagementRate+'</div><div class="kpi-label">ENGAGEMENT</div><div class="kpi-sub">interactions/post</div></div>';
-  h+='<div class="kpi" style="background:linear-gradient(135deg,#6366f1,#4338ca);"><div class="kpi-value">'+totalNotifs+'</div><div class="kpi-label">NOTIFICATIONS</div></div>';
+  h+='<div class="kpi" style="background:linear-gradient(135deg,#3b82f6,#1d4ed8);"><div class="kpi-value">'+totalUsers+'</div><div class="kpi-label">Utilisateurs</div><div class="kpi-sub">+'+newUsersWeek+' cette semaine</div></div>';
+  h+='<div class="kpi" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);"><div class="kpi-value">'+totalPosts+'</div><div class="kpi-label">Posts</div><div class="kpi-sub">+'+newPostsWeek+' cette semaine</div></div>';
+  h+='<div class="kpi" style="background:linear-gradient(135deg,#ec4899,#be185d);"><div class="kpi-value">'+totalLikes+'</div><div class="kpi-label">Likes</div><div class="kpi-sub">~'+avgLikes+'/post</div></div>';
+  h+='<div class="kpi" style="background:linear-gradient(135deg,#f59e0b,#b45309);"><div class="kpi-value">'+totalComments+'</div><div class="kpi-label">Commentaires</div></div>';
+  h+='<div class="kpi" style="background:linear-gradient(135deg,#ef4444,#b91c1c);"><div class="kpi-value">'+totalVideos+'</div><div class="kpi-label">Videos</div></div>';
+  h+='<div class="kpi" style="background:linear-gradient(135deg,#14b8a6,#0f766e);"><div class="kpi-value">'+_allTehilim.length+'</div><div class="kpi-label">Tehilim lus</div></div>';
+  h+='<div class="kpi" style="background:linear-gradient(135deg,#6366f1,#4338ca);"><div class="kpi-value">'+_allPrayers.length+'</div><div class="kpi-label">Prieres</div></div>';
+  h+='<div class="kpi" style="background:linear-gradient(135deg,#22c55e,#15803d);"><div class="kpi-value">'+_allStudies.length+'</div><div class="kpi-label">Etudes</div></div>';
+  h+='<div class="kpi" style="background:linear-gradient(135deg,#f97316,#c2410c);"><div class="kpi-value">'+_allObjectives.length+'</div><div class="kpi-label">Objectifs</div></div>';
   document.getElementById('dashKpis').innerHTML=h;
 
-  // ---- CHARTS ----
-
-  // 1. Users timeline (line chart - inscriptions par jour)
   renderUsersTimeline();
-
-  // 2. Posts activity (bar chart - posts par jour)
   renderPostsActivity();
-
-  // 3. Engagement doughnut
   renderEngagementChart(totalLikes, totalComments);
-
-  // 4. Top contributors (horizontal bar)
   renderTopUsers();
-
-  // 5. Post types (pie)
   renderPostTypes();
-
-  // 6. Likes per post (bar)
   renderLikesPerPost();
-
-  // 7. Growth cumulative (area)
   renderGrowthChart();
-
-  // Recent users list
   renderRecentUsers();
-
-  // Recent posts list
   renderRecentPosts();
-
-  // Leaderboard
   renderLeaderboard();
 }
 
 function renderUsersTimeline(){
   var dateMap={};
-  _allUsers.forEach(function(u){
-    var ts=toTs(u.createdAt);
-    if(!ts) return;
-    var key=new Date(ts).toISOString().split('T')[0];
-    dateMap[key]=(dateMap[key]||0)+1;
-  });
+  _allUsers.forEach(function(u){var k=toDayKey(u.createdAt);if(k)dateMap[k]=(dateMap[k]||0)+1;});
   var keys=Object.keys(dateMap).sort();
-  var labels=keys.map(function(k){var p=k.split('-');return p[2]+'/'+p[1];});
-  var data=keys.map(function(k){return dateMap[k];});
-
   destroyChart('chartUsersTimeline');
-  var ctx=document.getElementById('chartUsersTimeline').getContext('2d');
-  _charts['chartUsersTimeline']=new Chart(ctx,{
+  _charts['chartUsersTimeline']=new Chart(document.getElementById('chartUsersTimeline').getContext('2d'),{
     type:'line',
-    data:{labels:labels,datasets:[{
-      label:'Nouveaux utilisateurs',
-      data:data,
-      borderColor:'#3b82f6',
-      backgroundColor:'rgba(59,130,246,0.15)',
-      fill:true,
-      tension:0.4,
-      pointBackgroundColor:'#3b82f6',
-      pointRadius:4,
-      pointHoverRadius:6
-    }]},
+    data:{labels:keys.map(dayKeyToLabel),datasets:[{label:'Nouveaux utilisateurs',data:keys.map(function(k){return dateMap[k];}),borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,0.15)',fill:true,tension:0.4,pointBackgroundColor:'#3b82f6',pointRadius:4,pointHoverRadius:6}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}
   });
 }
 
 function renderPostsActivity(){
   var dateMap={};
-  _allPosts.forEach(function(p){
-    var ts=toTs(p.createdAt);
-    if(!ts) return;
-    var key=new Date(ts).toISOString().split('T')[0];
-    dateMap[key]=(dateMap[key]||0)+1;
-  });
+  _allPosts.forEach(function(p){var k=toDayKey(p.createdAt);if(k)dateMap[k]=(dateMap[k]||0)+1;});
   var keys=Object.keys(dateMap).sort();
-  var labels=keys.map(function(k){var p=k.split('-');return p[2]+'/'+p[1];});
-  var data=keys.map(function(k){return dateMap[k];});
-
   destroyChart('chartPostsActivity');
-  var ctx=document.getElementById('chartPostsActivity').getContext('2d');
-  _charts['chartPostsActivity']=new Chart(ctx,{
+  _charts['chartPostsActivity']=new Chart(document.getElementById('chartPostsActivity').getContext('2d'),{
     type:'bar',
-    data:{labels:labels,datasets:[{
-      label:'Posts',
-      data:data,
-      backgroundColor:'rgba(139,92,246,0.7)',
-      borderColor:'#8b5cf6',
-      borderWidth:1,
-      borderRadius:4
-    }]},
+    data:{labels:keys.map(dayKeyToLabel),datasets:[{label:'Posts',data:keys.map(function(k){return dateMap[k];}),backgroundColor:'rgba(139,92,246,0.7)',borderColor:'#8b5cf6',borderWidth:1,borderRadius:4}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}
   });
 }
 
 function renderEngagementChart(likes,comments){
   destroyChart('chartEngagement');
-  var ctx=document.getElementById('chartEngagement').getContext('2d');
-  _charts['chartEngagement']=new Chart(ctx,{
+  _charts['chartEngagement']=new Chart(document.getElementById('chartEngagement').getContext('2d'),{
     type:'doughnut',
-    data:{
-      labels:['Likes','Commentaires'],
-      datasets:[{
-        data:[likes,comments],
-        backgroundColor:['#ec4899','#f59e0b'],
-        borderColor:['#be185d','#b45309'],
-        borderWidth:2,
-        hoverOffset:8
-      }]
-    },
+    data:{labels:['Likes','Commentaires'],datasets:[{data:[likes,comments],backgroundColor:['#ec4899','#f59e0b'],borderColor:['#be185d','#b45309'],borderWidth:2,hoverOffset:8}]},
     options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{position:'bottom',labels:{padding:16,usePointStyle:true,pointStyle:'circle'}}}}
   });
 }
 
 function renderTopUsers(){
-  // Aggregate posts per author
   var authorMap={};
-  _allPosts.forEach(function(p){
-    var name=p.authorName||'Anonyme';
-    if(!authorMap[name]) authorMap[name]={posts:0,likes:0,comments:0};
-    authorMap[name].posts++;
-    authorMap[name].likes+=(p.likesCount||p.likes||0);
-    authorMap[name].comments+=(p.commentsCount||p.comments||0);
-  });
-  var authors=Object.keys(authorMap).map(function(k){return {name:k,total:authorMap[k].posts+authorMap[k].likes+authorMap[k].comments,posts:authorMap[k].posts,likes:authorMap[k].likes};});
-  authors.sort(function(a,b){return b.total-a.total;});
-  authors=authors.slice(0,8);
-
-  var labels=authors.map(function(a){return a.name;});
-  var postData=authors.map(function(a){return a.posts;});
-  var likeData=authors.map(function(a){return a.likes;});
-
+  _allPosts.forEach(function(p){var name=p.authorName||'Anonyme';if(!authorMap[name])authorMap[name]={posts:0,likes:0};authorMap[name].posts++;authorMap[name].likes+=(p.likesCount||p.likes||0);});
+  var authors=Object.keys(authorMap).map(function(k){return{name:k,total:authorMap[k].posts+authorMap[k].likes,posts:authorMap[k].posts,likes:authorMap[k].likes};}).sort(function(a,b){return b.total-a.total;}).slice(0,8);
   destroyChart('chartTopUsers');
-  var ctx=document.getElementById('chartTopUsers').getContext('2d');
-  _charts['chartTopUsers']=new Chart(ctx,{
+  _charts['chartTopUsers']=new Chart(document.getElementById('chartTopUsers').getContext('2d'),{
     type:'bar',
-    data:{labels:labels,datasets:[
-      {label:'Posts',data:postData,backgroundColor:'rgba(59,130,246,0.7)',borderRadius:3},
-      {label:'Likes',data:likeData,backgroundColor:'rgba(236,72,153,0.7)',borderRadius:3}
-    ]},
+    data:{labels:authors.map(function(a){return a.name;}),datasets:[{label:'Posts',data:authors.map(function(a){return a.posts;}),backgroundColor:'rgba(59,130,246,0.7)',borderRadius:3},{label:'Likes',data:authors.map(function(a){return a.likes;}),backgroundColor:'rgba(236,72,153,0.7)',borderRadius:3}]},
     options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{position:'bottom',labels:{usePointStyle:true,pointStyle:'circle',padding:12}}},scales:{x:{beginAtZero:true,stacked:true},y:{stacked:true}}}
   });
 }
 
 function renderPostTypes(){
   var typeMap={};
-  _allPosts.forEach(function(p){
-    var t=p.type||'post';
-    typeMap[t]=(typeMap[t]||0)+1;
-  });
+  _allPosts.forEach(function(p){var t=p.type||'post';typeMap[t]=(typeMap[t]||0)+1;});
   var labels=Object.keys(typeMap);
-  var data=labels.map(function(k){return typeMap[k];});
   var colors=['#3b82f6','#ec4899','#f59e0b','#22c55e','#8b5cf6','#ef4444','#14b8a6'];
-
   destroyChart('chartPostTypes');
-  var ctx=document.getElementById('chartPostTypes').getContext('2d');
-  _charts['chartPostTypes']=new Chart(ctx,{
+  _charts['chartPostTypes']=new Chart(document.getElementById('chartPostTypes').getContext('2d'),{
     type:'polarArea',
-    data:{labels:labels,datasets:[{
-      data:data,
-      backgroundColor:colors.slice(0,labels.length).map(function(c){return c+'bb';}),
-      borderColor:colors.slice(0,labels.length),
-      borderWidth:2
-    }]},
+    data:{labels:labels,datasets:[{data:labels.map(function(k){return typeMap[k];}),backgroundColor:colors.slice(0,labels.length).map(function(c){return c+'bb';}),borderColor:colors.slice(0,labels.length),borderWidth:2}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{usePointStyle:true,pointStyle:'circle',padding:12}}}}
   });
 }
 
 function renderLikesPerPost(){
-  var sorted=_allPosts.slice().filter(function(p){return (p.likesCount||p.likes||0)>0;}).sort(function(a,b){return (b.likesCount||b.likes||0)-(a.likesCount||a.likes||0);}).slice(0,10);
-  var labels=sorted.map(function(p){return (p.authorName||'?').substring(0,12)+'..';});
-  var data=sorted.map(function(p){return p.likesCount||p.likes||0;});
-  var commentData=sorted.map(function(p){return p.commentsCount||p.comments||0;});
-
+  var sorted=_allPosts.slice().filter(function(p){return(p.likesCount||p.likes||0)>0;}).sort(function(a,b){return(b.likesCount||b.likes||0)-(a.likesCount||a.likes||0);}).slice(0,10);
   destroyChart('chartLikesPerPost');
-  var ctx=document.getElementById('chartLikesPerPost').getContext('2d');
-  _charts['chartLikesPerPost']=new Chart(ctx,{
+  _charts['chartLikesPerPost']=new Chart(document.getElementById('chartLikesPerPost').getContext('2d'),{
     type:'bar',
-    data:{labels:labels,datasets:[
-      {label:'Likes',data:data,backgroundColor:'rgba(236,72,153,0.7)',borderRadius:4},
-      {label:'Commentaires',data:commentData,backgroundColor:'rgba(245,158,11,0.7)',borderRadius:4}
-    ]},
+    data:{labels:sorted.map(function(p){return(p.authorName||'?').substring(0,12);}),datasets:[{label:'Likes',data:sorted.map(function(p){return p.likesCount||p.likes||0;}),backgroundColor:'rgba(236,72,153,0.7)',borderRadius:4},{label:'Commentaires',data:sorted.map(function(p){return p.commentsCount||p.comments||0;}),backgroundColor:'rgba(245,158,11,0.7)',borderRadius:4}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{usePointStyle:true,pointStyle:'circle',padding:12}}},scales:{y:{beginAtZero:true}}}
   });
 }
 
 function renderGrowthChart(){
   var userDates=_allUsers.map(function(u){return toTs(u.createdAt);}).filter(function(t){return t>0;}).sort();
-  if(userDates.length===0) return;
-  var labels=[],data=[];
-  userDates.forEach(function(ts,i){
-    labels.push(toDateStr(ts));
-    data.push(i+1);
-  });
-
+  if(!userDates.length) return;
   destroyChart('chartGrowth');
-  var ctx=document.getElementById('chartGrowth').getContext('2d');
-  _charts['chartGrowth']=new Chart(ctx,{
+  _charts['chartGrowth']=new Chart(document.getElementById('chartGrowth').getContext('2d'),{
     type:'line',
-    data:{labels:labels,datasets:[{
-      label:'Total utilisateurs',
-      data:data,
-      borderColor:'#22c55e',
-      backgroundColor:'rgba(34,197,94,0.12)',
-      fill:true,
-      tension:0.3,
-      pointRadius:3,
-      pointBackgroundColor:'#22c55e'
-    }]},
+    data:{labels:userDates.map(function(ts){return toDateStr(ts);}),datasets:[{label:'Total utilisateurs',data:userDates.map(function(ts,i){return i+1;}),borderColor:'#22c55e',backgroundColor:'rgba(34,197,94,0.12)',fill:true,tension:0.3,pointRadius:3,pointBackgroundColor:'#22c55e'}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}
   });
 }
@@ -551,8 +646,7 @@ function renderRecentUsers(){
     h+='<img src="'+(u.photoURL||'https://ui-avatars.com/api/?name='+encodeURIComponent(u.displayName||'?')+'&background=3b82f6&color=fff&size=32')+'" style="width:28px;height:28px;border-radius:50%;object-fit:cover;">';
     h+='<div style="flex:1;"><div style="font-size:12px;font-weight:600;">'+esc(u.displayName||'Anonyme')+'</div>';
     h+='<div style="font-size:10px;color:#64748b;">'+esc(u.email||'')+'</div></div>';
-    h+='<div style="font-size:10px;color:#64748b;">'+timeAgo(u.createdAt)+'</div>';
-    h+='</div>';
+    h+='<div style="font-size:10px;color:#64748b;">'+timeAgo(u.createdAt)+'</div></div>';
   });
   document.getElementById('dashRecentUsers').innerHTML=h||'<div class="loading">Aucun</div>';
 }
@@ -562,59 +656,384 @@ function renderRecentPosts(){
   var h='';
   rp.forEach(function(p){
     h+='<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);">';
-    h+='<div style="display:flex;align-items:center;justify-content:space-between;">';
-    h+='<div style="font-size:12px;font-weight:600;">'+esc(p.authorName||'?')+'</div>';
-    h+='<div style="font-size:10px;color:#64748b;">'+timeAgo(p.createdAt)+'</div></div>';
+    h+='<div style="display:flex;align-items:center;justify-content:space-between;"><div style="font-size:12px;font-weight:600;">'+esc(p.authorName||'?')+'</div><div style="font-size:10px;color:#64748b;">'+timeAgo(p.createdAt)+'</div></div>';
     h+='<div style="font-size:11px;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:400px;">'+esc((p.text||'').substring(0,80))+'</div>';
-    h+='<div style="font-size:10px;color:#64748b;margin-top:2px;">❤️ '+(p.likesCount||0)+' · 💬 '+(p.commentsCount||0)+'</div>';
-    h+='</div>';
+    h+='<div style="font-size:10px;color:#64748b;margin-top:2px;">❤️ '+(p.likesCount||0)+' · 💬 '+(p.commentsCount||0)+'</div></div>';
   });
   document.getElementById('dashRecentPosts').innerHTML=h||'<div class="loading">Aucun</div>';
 }
 
 function renderLeaderboard(){
-  var userEngagement=[];
-  // Aggregate from posts
   var authorMap={};
-  _allPosts.forEach(function(p){
-    var name=p.authorName||'Anonyme';
-    if(!authorMap[name]) authorMap[name]={posts:0,likes:0,comments:0};
-    authorMap[name].posts++;
-    authorMap[name].likes+=(p.likesCount||p.likes||0);
-    authorMap[name].comments+=(p.commentsCount||p.comments||0);
-  });
-  // Also add user data (followers)
-  _allUsers.forEach(function(u){
-    var name=u.displayName||'Anonyme';
-    if(!authorMap[name]) authorMap[name]={posts:0,likes:0,comments:0};
-    authorMap[name].followers=(u.followersCount||0);
-    authorMap[name].photoURL=u.photoURL;
-  });
-
-  var entries=Object.keys(authorMap).map(function(k){
-    var a=authorMap[k];
-    return {name:k,posts:a.posts,likes:a.likes,comments:a.comments,followers:a.followers||0,score:a.posts*2+a.likes*3+a.comments*5+((a.followers||0)*1),photoURL:a.photoURL};
-  });
-  entries.sort(function(a,b){return b.score-a.score;});
-  entries=entries.slice(0,10);
-
+  _allPosts.forEach(function(p){var name=p.authorName||'Anonyme';if(!authorMap[name])authorMap[name]={posts:0,likes:0,comments:0};authorMap[name].posts++;authorMap[name].likes+=(p.likesCount||p.likes||0);authorMap[name].comments+=(p.commentsCount||p.comments||0);});
+  _allUsers.forEach(function(u){var name=u.displayName||'Anonyme';if(!authorMap[name])authorMap[name]={posts:0,likes:0,comments:0};authorMap[name].followers=(u.followersCount||0);authorMap[name].photoURL=u.photoURL;});
+  var entries=Object.keys(authorMap).map(function(k){var a=authorMap[k];return{name:k,posts:a.posts,likes:a.likes,comments:a.comments,followers:a.followers||0,score:a.posts*2+a.likes*3+a.comments*5+(a.followers||0),photoURL:a.photoURL};}).sort(function(a,b){return b.score-a.score;}).slice(0,10);
   var maxScore=entries.length>0?entries[0].score:1;
   var medals=['🥇','🥈','🥉'];
   var h='';
   entries.forEach(function(e,i){
     var pct=Math.round((e.score/maxScore)*100);
     var barColor=i===0?'#f59e0b':i===1?'#94a3b8':i===2?'#b45309':'#3b82f6';
-    h+='<div class="stat-row">';
-    h+='<div style="display:flex;align-items:center;gap:8px;min-width:180px;">';
-    h+='<span style="font-size:14px;width:22px;text-align:center;">'+(medals[i]||(i+1))+'</span>';
-    h+='<img src="'+(e.photoURL||'https://ui-avatars.com/api/?name='+encodeURIComponent(e.name)+'&background=3b82f6&color=fff&size=24')+'" style="width:24px;height:24px;border-radius:50%;object-fit:cover;">';
-    h+='<span style="font-size:12px;font-weight:600;">'+esc(e.name)+'</span></div>';
-    h+='<div class="stat-bar-bg"><div class="stat-bar" style="width:'+pct+'%;background:'+barColor+';"></div></div>';
-    h+='<div style="min-width:180px;text-align:right;font-size:10px;color:#94a3b8;">';
-    h+=e.posts+' posts · '+e.likes+' ❤️ · '+e.comments+' 💬 · '+e.followers+' followers';
-    h+='</div></div>';
+    h+='<div class="stat-row"><div style="display:flex;align-items:center;gap:8px;min-width:180px;"><span style="font-size:14px;width:22px;text-align:center;">'+(medals[i]||(i+1))+'</span><img src="'+(e.photoURL||'https://ui-avatars.com/api/?name='+encodeURIComponent(e.name)+'&background=3b82f6&color=fff&size=24')+'" style="width:24px;height:24px;border-radius:50%;object-fit:cover;"><span style="font-size:12px;font-weight:600;">'+esc(e.name)+'</span></div><div class="stat-bar-bg"><div class="stat-bar" style="width:'+pct+'%;background:'+barColor+';"></div></div><div style="min-width:180px;text-align:right;font-size:10px;color:#94a3b8;">'+e.posts+' posts · '+e.likes+' ❤️ · '+e.comments+' 💬 · '+e.followers+' followers</div></div>';
   });
   document.getElementById('dashLeaderboard').innerHTML=h||'<div class="loading">Aucune donnee</div>';
+}
+
+// ============================================
+// TEHILIM TAB
+// ============================================
+function renderTehilimTab(){
+  // KPIs
+  var totalReads=_allTehilim.length;
+  var uniqueReaders={};
+  var chapterCount={};
+  var readerCount={};
+  var weekAgo=Date.now()-7*86400000;
+  var readsThisWeek=0;
+  _allTehilim.forEach(function(t){
+    uniqueReaders[t.userId||t.uid||t.userName||'?']=true;
+    var ch=t.chapter||t.psalmNumber||t.chapterNumber||'?';
+    chapterCount[ch]=(chapterCount[ch]||0)+1;
+    var rName=t.userName||t.displayName||t.userId||'?';
+    readerCount[rName]=(readerCount[rName]||0)+1;
+    if(toTs(t.createdAt)>weekAgo) readsThisWeek++;
+  });
+
+  var topChapter='--',topChapterCount=0;
+  Object.keys(chapterCount).forEach(function(ch){if(chapterCount[ch]>topChapterCount){topChapterCount=chapterCount[ch];topChapter=ch;}});
+  var topReader='--',topReaderCount=0;
+  Object.keys(readerCount).forEach(function(r){if(readerCount[r]>topReaderCount){topReaderCount=readerCount[r];topReader=r;}});
+
+  var kh='';
+  if(totalReads===0){
+    kh='<div class="info-box">⚠️ Aucune donnee Tehilim trouvee dans Firestore. Pour activer ces stats, synchronise les lectures depuis l\'app Koulam vers la collection <strong>tehilim_reads</strong> (champs: userId, userName, chapter/psalmNumber, createdAt).</div>';
+  }
+  kh+='<div class="kpi-grid">';
+  kh+='<div class="kpi" style="background:linear-gradient(135deg,#14b8a6,#0f766e);"><div class="kpi-value">'+totalReads+'</div><div class="kpi-label">Tehilim lus</div><div class="kpi-sub">+'+readsThisWeek+' cette semaine</div></div>';
+  kh+='<div class="kpi" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);"><div class="kpi-value">'+Object.keys(uniqueReaders).length+'</div><div class="kpi-label">Lecteurs uniques</div></div>';
+  kh+='<div class="kpi" style="background:linear-gradient(135deg,#f59e0b,#b45309);"><div class="kpi-value">'+topChapter+'</div><div class="kpi-label">Chapitre #1</div><div class="kpi-sub">lu '+topChapterCount+' fois</div></div>';
+  kh+='<div class="kpi" style="background:linear-gradient(135deg,#ec4899,#be185d);"><div class="kpi-value">'+esc(topReader.substring(0,10))+'</div><div class="kpi-label">Top lecteur</div><div class="kpi-sub">'+topReaderCount+' lectures</div></div>';
+  kh+='<div class="kpi" style="background:linear-gradient(135deg,#6366f1,#4338ca);"><div class="kpi-value">'+_allChains.length+'</div><div class="kpi-label">Chaines actives</div></div>';
+  kh+='</div>';
+  document.getElementById('tehilimKpis').innerHTML=kh;
+
+  // Timeline chart
+  var dateMap={};
+  _allTehilim.forEach(function(t){var k=toDayKey(t.createdAt);if(k)dateMap[k]=(dateMap[k]||0)+1;});
+  var keys=Object.keys(dateMap).sort();
+  destroyChart('chartTehilimTimeline');
+  if(keys.length>0){
+    _charts['chartTehilimTimeline']=new Chart(document.getElementById('chartTehilimTimeline').getContext('2d'),{
+      type:'line',data:{labels:keys.map(dayKeyToLabel),datasets:[{label:'Lectures',data:keys.map(function(k){return dateMap[k];}),borderColor:'#14b8a6',backgroundColor:'rgba(20,184,166,0.15)',fill:true,tension:0.4,pointRadius:3}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}
+    });
+  }
+
+  // Popular chapters chart
+  var sortedChapters=Object.keys(chapterCount).map(function(ch){return{ch:ch,count:chapterCount[ch]};}).sort(function(a,b){return b.count-a.count;}).slice(0,15);
+  destroyChart('chartTehilimPopular');
+  if(sortedChapters.length>0){
+    _charts['chartTehilimPopular']=new Chart(document.getElementById('chartTehilimPopular').getContext('2d'),{
+      type:'bar',data:{labels:sortedChapters.map(function(c){return'Ch.'+c.ch;}),datasets:[{label:'Lectures',data:sortedChapters.map(function(c){return c.count;}),backgroundColor:'rgba(139,92,246,0.7)',borderRadius:4}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}
+    });
+  }
+
+  // Leaderboard
+  var readerEntries=Object.keys(readerCount).map(function(r){return{name:r,count:readerCount[r]};}).sort(function(a,b){return b.count-a.count;}).slice(0,10);
+  var maxR=readerEntries.length>0?readerEntries[0].count:1;
+  var medals=['🥇','🥈','🥉'];
+  var lh='';
+  readerEntries.forEach(function(e,i){
+    var pct=Math.round((e.count/maxR)*100);
+    lh+='<div class="stat-row"><div style="display:flex;align-items:center;gap:8px;min-width:140px;"><span style="font-size:14px;width:22px;text-align:center;">'+(medals[i]||(i+1))+'</span><span style="font-size:12px;font-weight:600;">'+esc(e.name)+'</span></div><div class="stat-bar-bg"><div class="stat-bar" style="width:'+pct+'%;background:#14b8a6;"></div></div><div style="min-width:80px;text-align:right;font-size:11px;font-weight:600;">'+e.count+' lectures</div></div>';
+  });
+  document.getElementById('tehilimLeaderboard').innerHTML=lh||'<div class="loading">Aucune donnee</div>';
+
+  // Chains
+  var ch='';
+  if(_allChains.length===0){
+    ch='<div class="loading">Aucune chaine trouvee</div>';
+  } else {
+    _allChains.forEach(function(c){
+      var typeColors={refoua:'#ef4444',mariage:'#ec4899',memoire:'#8b5cf6',autre:'#3b82f6'};
+      ch+='<div style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);">';
+      ch+='<div style="display:flex;align-items:center;justify-content:space-between;">';
+      ch+='<div><span class="badge" style="background:'+(typeColors[c.type]||'#6366f1')+';">'+esc(c.type||'autre')+'</span> <span style="font-size:12px;font-weight:600;margin-left:6px;">'+esc(c.name||'Chaine')+'</span></div>';
+      ch+='<span style="font-size:11px;color:#64748b;">'+(c.psalmsRead||0)+' psaumes lus</span></div></div>';
+    });
+  }
+  document.getElementById('tehilimChains').innerHTML=ch;
+}
+
+// ============================================
+// ETUDES TAB
+// ============================================
+function renderEtudesTab(){
+  var totalStudies=_allStudies.length;
+  var typeCount={};
+  var userCount={};
+  var weekAgo=Date.now()-7*86400000;
+  var studiesThisWeek=0;
+  _allStudies.forEach(function(s){
+    var t=s.type||s.studyType||'autre';
+    typeCount[t]=(typeCount[t]||0)+1;
+    var u=s.userName||s.displayName||s.userId||'?';
+    userCount[u]=(userCount[u]||0)+1;
+    if(toTs(s.createdAt)>weekAgo) studiesThisWeek++;
+  });
+
+  var topType='--',topTypeCount=0;
+  Object.keys(typeCount).forEach(function(t){if(typeCount[t]>topTypeCount){topTypeCount=typeCount[t];topType=t;}});
+  var topStudent='--',topStudentCount=0;
+  Object.keys(userCount).forEach(function(u){if(userCount[u]>topStudentCount){topStudentCount=userCount[u];topStudent=u;}});
+
+  var kh='';
+  if(totalStudies===0){
+    kh='<div class="info-box">⚠️ Aucune donnee d\'etude trouvee dans Firestore. Pour activer ces stats, synchronise les sessions depuis l\'app Koulam vers la collection <strong>study_sessions</strong> (champs: userId, userName, type [hayom_yom/tanya/rambam/houmach], createdAt).</div>';
+  }
+  kh+='<div class="kpi-grid">';
+  kh+='<div class="kpi" style="background:linear-gradient(135deg,#22c55e,#15803d);"><div class="kpi-value">'+totalStudies+'</div><div class="kpi-label">Sessions d\'etude</div><div class="kpi-sub">+'+studiesThisWeek+' cette semaine</div></div>';
+  kh+='<div class="kpi" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);"><div class="kpi-value">'+Object.keys(userCount).length+'</div><div class="kpi-label">Etudiants uniques</div></div>';
+  kh+='<div class="kpi" style="background:linear-gradient(135deg,#f59e0b,#b45309);"><div class="kpi-value">'+esc(topType.substring(0,12))+'</div><div class="kpi-label">Etude #1</div><div class="kpi-sub">'+topTypeCount+' sessions</div></div>';
+  kh+='<div class="kpi" style="background:linear-gradient(135deg,#ec4899,#be185d);"><div class="kpi-value">'+esc(topStudent.substring(0,10))+'</div><div class="kpi-label">Top etudiant</div><div class="kpi-sub">'+topStudentCount+' sessions</div></div>';
+  kh+='</div>';
+  document.getElementById('etudesKpis').innerHTML=kh;
+
+  // Timeline
+  var dateMap={};
+  _allStudies.forEach(function(s){var k=toDayKey(s.createdAt);if(k)dateMap[k]=(dateMap[k]||0)+1;});
+  var keys=Object.keys(dateMap).sort();
+  destroyChart('chartEtudesTimeline');
+  if(keys.length>0){
+    _charts['chartEtudesTimeline']=new Chart(document.getElementById('chartEtudesTimeline').getContext('2d'),{
+      type:'bar',data:{labels:keys.map(dayKeyToLabel),datasets:[{label:'Sessions',data:keys.map(function(k){return dateMap[k];}),backgroundColor:'rgba(34,197,94,0.7)',borderRadius:4}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}
+    });
+  }
+
+  // Types doughnut
+  var typeLabels=Object.keys(typeCount);
+  var typeNames={hayom_yom:'Hayom Yom',tanya:'Tanya',rambam:'Rambam',houmach:'Houmach'};
+  var colors=['#22c55e','#8b5cf6','#3b82f6','#f59e0b','#ef4444','#14b8a6'];
+  destroyChart('chartEtudesTypes');
+  if(typeLabels.length>0){
+    _charts['chartEtudesTypes']=new Chart(document.getElementById('chartEtudesTypes').getContext('2d'),{
+      type:'doughnut',data:{labels:typeLabels.map(function(t){return typeNames[t]||t;}),datasets:[{data:typeLabels.map(function(t){return typeCount[t];}),backgroundColor:colors.slice(0,typeLabels.length),borderWidth:2}]},
+      options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'bottom',labels:{padding:12,usePointStyle:true,pointStyle:'circle'}}}}
+    });
+  }
+
+  // Leaderboard
+  var studentEntries=Object.keys(userCount).map(function(u){return{name:u,count:userCount[u]};}).sort(function(a,b){return b.count-a.count;}).slice(0,10);
+  var maxS=studentEntries.length>0?studentEntries[0].count:1;
+  var medals=['🥇','🥈','🥉'];
+  var lh='';
+  studentEntries.forEach(function(e,i){
+    var pct=Math.round((e.count/maxS)*100);
+    lh+='<div class="stat-row"><div style="display:flex;align-items:center;gap:8px;min-width:140px;"><span style="font-size:14px;width:22px;text-align:center;">'+(medals[i]||(i+1))+'</span><span style="font-size:12px;font-weight:600;">'+esc(e.name)+'</span></div><div class="stat-bar-bg"><div class="stat-bar" style="width:'+pct+'%;background:#22c55e;"></div></div><div style="min-width:80px;text-align:right;font-size:11px;font-weight:600;">'+e.count+' sessions</div></div>';
+  });
+  document.getElementById('etudesLeaderboard').innerHTML=lh||'<div class="loading">Aucune donnee</div>';
+
+  // Static content cards
+  var ec='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">';
+  ec+='<div style="background:rgba(34,197,94,0.1);border-radius:8px;padding:12px;"><div style="font-size:12px;font-weight:700;">📅 Hayom Yom</div><div style="font-size:10px;color:#94a3b8;margin-top:4px;">365 messages du Rabbi</div></div>';
+  ec+='<div style="background:rgba(139,92,246,0.1);border-radius:8px;padding:12px;"><div style="font-size:12px;font-weight:700;">📕 Tanya</div><div style="font-size:10px;color:#94a3b8;margin-top:4px;">Cours quotidien</div></div>';
+  ec+='<div style="background:rgba(59,130,246,0.1);border-radius:8px;padding:12px;"><div style="font-size:12px;font-weight:700;">📘 Rambam</div><div style="font-size:10px;color:#94a3b8;margin-top:4px;">1 loi / jour</div></div>';
+  ec+='<div style="background:rgba(245,158,11,0.1);border-radius:8px;padding:12px;"><div style="font-size:12px;font-weight:700;">📗 Houmach</div><div style="font-size:10px;color:#94a3b8;margin-top:4px;">Paracha hebdomadaire</div></div>';
+  ec+='</div>';
+  document.getElementById('etudesContent').innerHTML=ec;
+}
+
+// ============================================
+// TEFILA TAB
+// ============================================
+function renderTefilaTab(){
+  var totalPrayers=_allPrayers.length;
+  var prayerTypeCount={};
+  var prayerUserCount={};
+  var weekAgo=Date.now()-7*86400000;
+  var prayersThisWeek=0;
+  _allPrayers.forEach(function(p){
+    var t=p.type||p.prayerType||p.prayer||'autre';
+    prayerTypeCount[t]=(prayerTypeCount[t]||0)+1;
+    var u=p.userName||p.displayName||p.userId||'?';
+    prayerUserCount[u]=(prayerUserCount[u]||0)+1;
+    if(toTs(p.createdAt)>weekAgo) prayersThisWeek++;
+  });
+
+  var topPrayer='--',topPrayerCount=0;
+  Object.keys(prayerTypeCount).forEach(function(t){if(prayerTypeCount[t]>topPrayerCount){topPrayerCount=prayerTypeCount[t];topPrayer=t;}});
+  var topPriant='--',topPriantCount=0;
+  Object.keys(prayerUserCount).forEach(function(u){if(prayerUserCount[u]>topPriantCount){topPriantCount=prayerUserCount[u];topPriant=u;}});
+
+  var kh='';
+  if(totalPrayers===0){
+    kh='<div class="info-box">⚠️ Aucune donnee de priere trouvee dans Firestore. Pour activer ces stats, synchronise les prieres depuis l\'app vers la collection <strong>prayer_logs</strong> (champs: userId, userName, type [chaharit/minha/arvit], createdAt).</div>';
+  }
+  kh+='<div class="kpi-grid">';
+  kh+='<div class="kpi" style="background:linear-gradient(135deg,#6366f1,#4338ca);"><div class="kpi-value">'+totalPrayers+'</div><div class="kpi-label">Prieres enregistrees</div><div class="kpi-sub">+'+prayersThisWeek+' cette semaine</div></div>';
+  kh+='<div class="kpi" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);"><div class="kpi-value">'+Object.keys(prayerUserCount).length+'</div><div class="kpi-label">Priants uniques</div></div>';
+  kh+='<div class="kpi" style="background:linear-gradient(135deg,#f59e0b,#b45309);"><div class="kpi-value">'+esc(topPrayer.substring(0,12))+'</div><div class="kpi-label">Priere #1</div><div class="kpi-sub">'+topPrayerCount+' fois</div></div>';
+  kh+='<div class="kpi" style="background:linear-gradient(135deg,#ec4899,#be185d);"><div class="kpi-value">'+esc(topPriant.substring(0,10))+'</div><div class="kpi-label">Top priant</div><div class="kpi-sub">'+topPriantCount+' prieres</div></div>';
+  kh+='<div class="kpi" style="background:linear-gradient(135deg,#ef4444,#b91c1c);"><div class="kpi-value">'+_allMinyanim.length+'</div><div class="kpi-label">Minyanim demandes</div></div>';
+  kh+='</div>';
+  document.getElementById('tefilaKpis').innerHTML=kh;
+
+  // Types chart
+  var prayerNames={chaharit:'Chaharit',minha:'Minha',arvit:'Arvit',modeh:'Modeh Ani',brakhot:'Brakhot'};
+  var typeLabels=Object.keys(prayerTypeCount);
+  var colors=['#6366f1','#f59e0b','#14b8a6','#ec4899','#3b82f6','#ef4444'];
+  destroyChart('chartTefilaTypes');
+  if(typeLabels.length>0){
+    _charts['chartTefilaTypes']=new Chart(document.getElementById('chartTefilaTypes').getContext('2d'),{
+      type:'doughnut',data:{labels:typeLabels.map(function(t){return prayerNames[t]||t;}),datasets:[{data:typeLabels.map(function(t){return prayerTypeCount[t];}),backgroundColor:colors.slice(0,typeLabels.length),borderWidth:2}]},
+      options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'bottom',labels:{padding:12,usePointStyle:true,pointStyle:'circle'}}}}
+    });
+  }
+
+  // Timeline
+  var dateMap={};
+  _allPrayers.forEach(function(p){var k=toDayKey(p.createdAt);if(k)dateMap[k]=(dateMap[k]||0)+1;});
+  var keys=Object.keys(dateMap).sort();
+  destroyChart('chartTefilaTimeline');
+  if(keys.length>0){
+    _charts['chartTefilaTimeline']=new Chart(document.getElementById('chartTefilaTimeline').getContext('2d'),{
+      type:'bar',data:{labels:keys.map(dayKeyToLabel),datasets:[{label:'Prieres',data:keys.map(function(k){return dateMap[k];}),backgroundColor:'rgba(99,102,241,0.7)',borderRadius:4}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}
+    });
+  }
+
+  // Leaderboard
+  var priantEntries=Object.keys(prayerUserCount).map(function(u){return{name:u,count:prayerUserCount[u]};}).sort(function(a,b){return b.count-a.count;}).slice(0,10);
+  var maxP=priantEntries.length>0?priantEntries[0].count:1;
+  var medals=['🥇','🥈','🥉'];
+  var lh='';
+  priantEntries.forEach(function(e,i){
+    var pct=Math.round((e.count/maxP)*100);
+    lh+='<div class="stat-row"><div style="display:flex;align-items:center;gap:8px;min-width:140px;"><span style="font-size:14px;width:22px;text-align:center;">'+(medals[i]||(i+1))+'</span><span style="font-size:12px;font-weight:600;">'+esc(e.name)+'</span></div><div class="stat-bar-bg"><div class="stat-bar" style="width:'+pct+'%;background:#6366f1;"></div></div><div style="min-width:80px;text-align:right;font-size:11px;font-weight:600;">'+e.count+' prieres</div></div>';
+  });
+  document.getElementById('tefilaLeaderboard').innerHTML=lh||'<div class="loading">Aucune donnee</div>';
+
+  // Minyanim
+  var mh='';
+  if(_allMinyanim.length===0){
+    mh='<div class="loading">Aucun minyan</div>';
+  } else {
+    _allMinyanim.slice(0,10).forEach(function(m){
+      var prayerNames2={chaharit:'Chaharit',minha:'Minha',arvit:'Arvit'};
+      mh+='<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);">';
+      mh+='<div style="display:flex;align-items:center;justify-content:space-between;">';
+      mh+='<div><span class="badge" style="background:#6366f1;">'+esc(prayerNames2[m.prayer]||m.prayer||'?')+'</span> <span style="font-size:12px;margin-left:6px;">'+esc(m.synagogue||'Lieu non precise')+'</span></div>';
+      mh+='<span style="font-size:11px;color:#64748b;">'+esc(m.time||'--')+' · besoin de '+(m.needed||'?')+'</span></div></div>';
+    });
+  }
+  document.getElementById('tefilaMinyanim').innerHTML=mh;
+}
+
+// ============================================
+// OBJECTIFS TAB
+// ============================================
+function renderObjectifsTab(){
+  var totalObj=_allObjectives.length;
+  var objUserCount={};
+  var objItemCount={};
+  var totalCompleted=0,totalItems=0;
+  var weekAgo=Date.now()-7*86400000;
+  var objThisWeek=0;
+
+  var OBJ_NAMES={modeh:'Modeh Ani',brakhot:'Brakhot du matin',tsedaka_am:'Tsedaka matin',tefila:'Chaharit',tehilim:'Tehilim du jour',etude_am:'Etude matin',casher:'Manger casher',tsedaka_pm:'Tsedaka aprem',minha:'Minha',minyan:'Completer minyan',arvit:'Arvit',etude_pm:'Etude soir',famille:'Temps famille',transmission:'Dougma Haya'};
+
+  _allObjectives.forEach(function(o){
+    var u=o.userName||o.displayName||o.userId||'?';
+    if(!objUserCount[u]) objUserCount[u]=0;
+    // Count completed items in this objective
+    var completed=0,items=0;
+    Object.keys(OBJ_NAMES).forEach(function(key){
+      if(o[key]!==undefined){items++;if(o[key])completed++;}
+    });
+    // Also check if data is nested
+    if(o.items && typeof o.items==='object'){
+      Object.keys(o.items).forEach(function(key){items++;if(o.items[key])completed++;});
+    }
+    objUserCount[u]+=completed;
+    totalCompleted+=completed;
+    totalItems+=items;
+
+    Object.keys(OBJ_NAMES).forEach(function(key){
+      if(o[key]){objItemCount[key]=(objItemCount[key]||0)+1;}
+    });
+    if(o.items && typeof o.items==='object'){
+      Object.keys(o.items).forEach(function(key){if(o.items[key]){objItemCount[key]=(objItemCount[key]||0)+1;}});
+    }
+
+    if(toTs(o.createdAt||o.date)>weekAgo) objThisWeek++;
+  });
+
+  var completionRate=totalItems>0?Math.round((totalCompleted/totalItems)*100):0;
+  var topObjUser='--',topObjUserCount=0;
+  Object.keys(objUserCount).forEach(function(u){if(objUserCount[u]>topObjUserCount){topObjUserCount=objUserCount[u];topObjUser=u;}});
+
+  var kh='';
+  if(totalObj===0){
+    kh='<div class="info-box">⚠️ Aucune donnee d\'objectifs trouvee dans Firestore. Pour activer ces stats, synchronise les objectifs quotidiens depuis l\'app vers la collection <strong>objectives</strong> (champs: userId, userName, date, modeh, brakhot, tefila, tehilim, etude_am, minha, arvit, etc.).</div>';
+  }
+  kh+='<div class="kpi-grid">';
+  kh+='<div class="kpi" style="background:linear-gradient(135deg,#f97316,#c2410c);"><div class="kpi-value">'+totalObj+'</div><div class="kpi-label">Jours enregistres</div><div class="kpi-sub">+'+objThisWeek+' cette semaine</div></div>';
+  kh+='<div class="kpi" style="background:linear-gradient(135deg,#22c55e,#15803d);"><div class="kpi-value">'+completionRate+'%</div><div class="kpi-label">Taux completion</div><div class="kpi-sub">'+totalCompleted+'/'+totalItems+' items</div></div>';
+  kh+='<div class="kpi" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);"><div class="kpi-value">'+Object.keys(objUserCount).length+'</div><div class="kpi-label">Utilisateurs actifs</div></div>';
+  kh+='<div class="kpi" style="background:linear-gradient(135deg,#ec4899,#be185d);"><div class="kpi-value">'+esc(topObjUser.substring(0,10))+'</div><div class="kpi-label">Top utilisateur</div><div class="kpi-sub">'+topObjUserCount+' objectifs</div></div>';
+  kh+='</div>';
+  document.getElementById('objectifsKpis').innerHTML=kh;
+
+  // Completion by item chart
+  var objLabels=Object.keys(OBJ_NAMES);
+  var objData=objLabels.map(function(k){return objItemCount[k]||0;});
+  var colors=['#22c55e','#3b82f6','#f59e0b','#6366f1','#14b8a6','#8b5cf6','#ef4444','#ec4899','#f97316','#06b6d4','#a855f7','#84cc16','#e11d48','#0ea5e9'];
+  destroyChart('chartObjectifsCompletion');
+  if(totalObj>0){
+    _charts['chartObjectifsCompletion']=new Chart(document.getElementById('chartObjectifsCompletion').getContext('2d'),{
+      type:'bar',data:{labels:objLabels.map(function(k){return OBJ_NAMES[k]||k;}),datasets:[{label:'Completes',data:objData,backgroundColor:colors.map(function(c){return c+'aa';}),borderRadius:4}]},
+      options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,ticks:{stepSize:1}}}}
+    });
+  }
+
+  // Timeline
+  var dateMap={};
+  _allObjectives.forEach(function(o){var k=toDayKey(o.createdAt||o.date);if(k)dateMap[k]=(dateMap[k]||0)+1;});
+  var keys=Object.keys(dateMap).sort();
+  destroyChart('chartObjectifsTimeline');
+  if(keys.length>0){
+    _charts['chartObjectifsTimeline']=new Chart(document.getElementById('chartObjectifsTimeline').getContext('2d'),{
+      type:'line',data:{labels:keys.map(dayKeyToLabel),datasets:[{label:'Jours actifs',data:keys.map(function(k){return dateMap[k];}),borderColor:'#f97316',backgroundColor:'rgba(249,115,22,0.15)',fill:true,tension:0.4,pointRadius:3}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}
+    });
+  }
+
+  // Leaderboard
+  var objEntries=Object.keys(objUserCount).map(function(u){return{name:u,count:objUserCount[u]};}).sort(function(a,b){return b.count-a.count;}).slice(0,10);
+  var maxO=objEntries.length>0?objEntries[0].count:1;
+  var medals=['🥇','🥈','🥉'];
+  var lh='';
+  objEntries.forEach(function(e,i){
+    var pct=Math.round((e.count/maxO)*100);
+    lh+='<div class="stat-row"><div style="display:flex;align-items:center;gap:8px;min-width:140px;"><span style="font-size:14px;width:22px;text-align:center;">'+(medals[i]||(i+1))+'</span><span style="font-size:12px;font-weight:600;">'+esc(e.name)+'</span></div><div class="stat-bar-bg"><div class="stat-bar" style="width:'+pct+'%;background:#f97316;"></div></div><div style="min-width:80px;text-align:right;font-size:11px;font-weight:600;">'+e.count+' completes</div></div>';
+  });
+  document.getElementById('objectifsLeaderboard').innerHTML=lh||'<div class="loading">Aucune donnee</div>';
+
+  // Objectives list
+  var ol='<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">';
+  var periods=[{name:'Matin',items:['modeh','brakhot','tsedaka_am','tefila','tehilim','etude_am'],color:'#f59e0b'},{name:'Apres-midi',items:['casher','tsedaka_pm','minha','minyan'],color:'#3b82f6'},{name:'Soir',items:['arvit','etude_pm','famille','transmission'],color:'#8b5cf6'}];
+  periods.forEach(function(per){
+    ol+='<div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:10px;"><div style="font-size:11px;font-weight:700;color:'+per.color+';margin-bottom:6px;">'+per.name+'</div>';
+    per.items.forEach(function(item){
+      var count=objItemCount[item]||0;
+      ol+='<div style="font-size:11px;color:#94a3b8;padding:2px 0;">'+esc(OBJ_NAMES[item]||item)+' <span style="float:right;color:#64748b;">'+count+'x</span></div>';
+    });
+    ol+='</div>';
+  });
+  ol+='</div>';
+  document.getElementById('objectifsList').innerHTML=ol;
 }
 
 // ============================================
@@ -672,10 +1091,8 @@ function renderVideos(){
   _allVideos.forEach(function(v){
     h+='<div class="card" style="padding:0;overflow:hidden;">';
     if(v.thumbnail) h+='<img src="'+v.thumbnail+'" style="width:100%;height:150px;object-fit:cover;">';
-    h+='<div style="padding:10px;">';
-    h+='<div style="font-size:12px;font-weight:600;margin-bottom:4px;">'+esc(v.title||'--')+'</div>';
-    h+='<div style="font-size:10px;color:#64748b;">'+esc(v.channelTitle||'')+'</div>';
-    h+='</div></div>';
+    h+='<div style="padding:10px;"><div style="font-size:12px;font-weight:600;margin-bottom:4px;">'+esc(v.title||'--')+'</div>';
+    h+='<div style="font-size:10px;color:#64748b;">'+esc(v.channelTitle||'')+'</div></div></div>';
   });
   h+='</div>';
   document.getElementById('videosTable').innerHTML=h;
@@ -701,22 +1118,9 @@ function renderNotifs(){
 }
 
 // ============================================
-// ETUDES
-// ============================================
-function renderEtudes(){
-  var h='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;">';
-  h+='<div class="card"><div class="card-title">📅 Hayom Yom</div><p style="color:#94a3b8;font-size:13px;">Message du jour du Rabbi — charge depuis hyy-data.json</p><div style="margin-top:8px;"><span class="badge" style="background:#22c55e;">365 jours</span></div></div>';
-  h+='<div class="card"><div class="card-title">📕 Tanya</div><p style="color:#94a3b8;font-size:13px;">Cours quotidien de Hassidout</p><div style="margin-top:8px;"><span class="badge" style="background:#8b5cf6;">Quotidien</span></div></div>';
-  h+='<div class="card"><div class="card-title">📘 Rambam</div><p style="color:#94a3b8;font-size:13px;">1 loi par jour — Mishneh Torah</p><div style="margin-top:8px;"><span class="badge" style="background:#3b82f6;">Quotidien</span></div></div>';
-  h+='<div class="card"><div class="card-title">📗 Houmach</div><p style="color:#94a3b8;font-size:13px;">Paracha de la semaine avec commentaires</p><div style="margin-top:8px;"><span class="badge" style="background:#f59e0b;">Hebdomadaire</span></div></div>';
-  h+='</div>';
-  document.getElementById('etudesContent').innerHTML=h;
-}
-
-// ============================================
 // INIT
 // ============================================
-loadAll();
+if(sessionStorage.getItem('km_auth')==='1') loadAll();
 </script>
 </body>
 </html>
