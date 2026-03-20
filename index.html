@@ -111,6 +111,7 @@ body{font-family:'Inter',sans-serif;background:#0f172a;color:#e2e8f0;min-height:
     <li class="nav-item" onclick="switchTab('minyan')">🕍 <span>Minyan</span></li>
     <li class="nav-item" onclick="switchTab('objectifs')">🎯 <span>Objectifs</span></li>
     <li class="nav-item" onclick="switchTab('shopify')">🛍️ <span>Chabad Club</span></li>
+    <li class="nav-item" onclick="switchTab('challenges')">🏆 <span>Challenges</span></li>
   </ul>
   <div class="sidebar-footer">
     <div id="fbStatus">⏳ Connexion Firebase...</div>
@@ -341,6 +342,16 @@ body{font-family:'Inter',sans-serif;background:#0f172a;color:#e2e8f0;min-height:
   </div>
 </div>
 
+<!-- CHALLENGES -->
+<div class="tab" id="tab-challenges">
+  <div class="page-title">🏆 Challenges</div>
+  <div class="kpi-grid" id="challengesKpis"><div class="loading">Chargement...</div></div>
+  <div class="card" style="margin-top:16px;">
+    <div class="card-title">Liste des Challenges</div>
+    <div id="challengesList"><div class="loading">...</div></div>
+  </div>
+</div>
+
 </div>
 </div>
 
@@ -393,6 +404,7 @@ firebase.initializeApp(FIREBASE_CONFIG);
 var db = firebase.firestore();
 var _allUsers=[], _allPosts=[], _allVideos=[], _allNotifs=[];
 var _allTehilim=[], _allStudies=[], _allPrayers=[], _allObjectives=[], _allMinyanim=[], _allChains=[], _allMinyanGroups=[];
+var _allFriendRequests=[], _allChallenges=[];
 var _charts = {};
 
 // Chart.js dark theme defaults
@@ -527,12 +539,28 @@ async function loadAll(){
       mgSnap.forEach(function(d){var g=d.data();g._id=d.id;_allMinyanGroups.push(g);});
     }catch(e){console.warn('[MINYAN_GROUPS]',e.message);_allMinyanGroups=[];}
 
+    // Friend requests
+    try{
+      var frSnap=await db.collection('friend_requests').limit(500).get();
+      _allFriendRequests=[];
+      frSnap.forEach(function(d){var f=d.data();f._id=d.id;_allFriendRequests.push(f);});
+    }catch(e){console.warn('[FRIEND_REQUESTS]',e.message);_allFriendRequests=[];}
+
+    // Challenges
+    try{
+      var chgSnap=await db.collection('challenges').orderBy('createdAt','desc').limit(200).get();
+      _allChallenges=[];
+      chgSnap.forEach(function(d){var c=d.data();c._id=d.id;_allChallenges.push(c);});
+    }catch(e){console.warn('[CHALLENGES]',e.message);_allChallenges=[];}
+
     var statusParts=[_allUsers.length+' users',_allPosts.length+' posts'];
     if(_allTehilim.length) statusParts.push(_allTehilim.length+' tehilim');
     if(_allStudies.length) statusParts.push(_allStudies.length+' etudes');
     if(_allPrayers.length) statusParts.push(_allPrayers.length+' prieres');
     if(_allObjectives.length) statusParts.push(_allObjectives.length+' objectifs');
     if(_allMinyanGroups.length) statusParts.push(_allMinyanGroups.length+' groupes minyan');
+    if(_allChallenges.length) statusParts.push(_allChallenges.length+' challenges');
+    if(_allFriendRequests.length) statusParts.push(_allFriendRequests.length+' demandes amis');
 
     document.getElementById('fbStatus').innerHTML='<span style="color:#22c55e;">✅ Firebase OK</span><br>'+statusParts.join(' · ');
 
@@ -546,6 +574,7 @@ async function loadAll(){
     renderTefilaTab();
     renderMinyanTab();
     renderObjectifsTab();
+    renderChallengesTab();
   }catch(err){
     document.getElementById('fbStatus').innerHTML='<span style="color:#ef4444;">❌ '+err.message+'</span>';
     console.error(err);
@@ -1241,6 +1270,7 @@ function renderUsers(){
   h+='<th style="text-align:center;">Prieres</th>';
   h+='<th style="text-align:center;">Etudes</th>';
   h+='<th style="text-align:center;">Objectifs</th>';
+  h+='<th style="text-align:center;">Amis</th>';
   h+='<th>Groupes Minyan</th>';
   h+='<th style="text-align:center;">Followers</th>';
   h+='<th>Inscrit</th>';
@@ -1285,6 +1315,12 @@ function renderUsers(){
     // Objectifs
     h+='<td style="text-align:center;">';
     if(objDays>0) h+='<span style="background:rgba(236,72,153,0.15);color:#ec4899;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700;">'+objDone+'<span style="opacity:0.6;font-weight:400;">/'+objDays+'j</span></span>';
+    else h+='<span style="color:#475569;">0</span>';
+    h+='</td>';
+    // Friends
+    var friendsCount=(u.friends||[]).length;
+    h+='<td style="text-align:center;">';
+    if(friendsCount>0) h+='<span style="background:rgba(59,130,246,0.15);color:#3b82f6;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700;">'+friendsCount+'</span>';
     else h+='<span style="color:#475569;">0</span>';
     h+='</td>';
     // Groupes minyan
@@ -1360,6 +1396,69 @@ function renderNotifs(){
   });
   h+='</tbody></table>';
   document.getElementById('notifsTable').innerHTML=h;
+}
+
+// ============================================
+// CHALLENGES TAB
+// ============================================
+function renderChallengesTab(){
+  var now=Date.now();
+  var activeChallenges=_allChallenges.filter(function(c){
+    var end=toTs(c.endDate);
+    return end>=now;
+  });
+  var totalParticipants=0;
+  var totalProgress=0, totalTarget=0;
+  _allChallenges.forEach(function(c){
+    var parts=c.participants||[];
+    totalParticipants+=parts.length;
+    parts.forEach(function(p){
+      totalProgress+=(p.progress||0);
+      totalTarget+=(c.target||0);
+    });
+  });
+  var completionRate=totalTarget>0?Math.round((totalProgress/totalTarget)*100):0;
+
+  var kh='';
+  kh+='<div class="kpi" style="background:linear-gradient(135deg,#f59e0b,#b45309);"><div class="kpi-value">'+_allChallenges.length+'</div><div class="kpi-label">Total Challenges</div><div class="kpi-sub">'+activeChallenges.length+' actifs</div></div>';
+  kh+='<div class="kpi" style="background:linear-gradient(135deg,#ef4444,#b91c1c);"><div class="kpi-value">'+totalParticipants+'</div><div class="kpi-label">Participants</div></div>';
+  kh+='<div class="kpi" style="background:linear-gradient(135deg,#22c55e,#15803d);"><div class="kpi-value">'+completionRate+'%</div><div class="kpi-label">Completion</div></div>';
+  document.getElementById('challengesKpis').innerHTML=kh;
+
+  // List
+  if(_allChallenges.length===0){
+    document.getElementById('challengesList').innerHTML='<div style="color:#64748b;font-size:13px;padding:16px;">Aucun challenge</div>';
+    return;
+  }
+  var h='<table class="tbl"><thead><tr><th>Titre</th><th>Type</th><th>Scope</th><th style="text-align:center;">Objectif</th><th style="text-align:center;">Participants</th><th>Createur</th><th>Debut</th><th>Fin</th><th>Classement</th></tr></thead><tbody>';
+  _allChallenges.forEach(function(c){
+    var parts=c.participants||[];
+    var sorted=parts.slice().sort(function(a,b){return(b.progress||0)-(a.progress||0);});
+    var typeColors={tehilim:'#14b8a6',prieres:'#6366f1',etudes:'#f59e0b',objectifs:'#ec4899'};
+    var scopeLabels={friends:'Amis',group:'Groupe',community:'Communaute'};
+    var end=toTs(c.endDate);
+    var isActive=end>=now;
+
+    h+='<tr style="'+(isActive?'':'opacity:0.5;')+'">';
+    h+='<td style="font-weight:600;">'+esc(c.title||'--')+'</td>';
+    h+='<td><span class="badge" style="background:'+(typeColors[c.type]||'#3b82f6')+';">'+esc(c.type||'--')+'</span></td>';
+    h+='<td style="font-size:11px;">'+(scopeLabels[c.scope]||c.scope||'--')+'</td>';
+    h+='<td style="text-align:center;font-weight:700;">'+(c.target||0)+'</td>';
+    h+='<td style="text-align:center;font-weight:700;">'+parts.length+'</td>';
+    h+='<td style="font-size:11px;">'+esc(c.createdByName||'?')+'</td>';
+    h+='<td style="font-size:11px;color:#64748b;">'+fmtDate(c.startDate)+'</td>';
+    h+='<td style="font-size:11px;color:#64748b;">'+fmtDate(c.endDate)+'</td>';
+    h+='<td style="font-size:10px;">';
+    sorted.slice(0,3).forEach(function(p,i){
+      var medal=i===0?'🥇':i===1?'🥈':'🥉';
+      h+=medal+' '+esc(p.name||'?')+' ('+((p.progress||0))+')<br>';
+    });
+    if(parts.length===0) h+='<span style="color:#475569;">--</span>';
+    h+='</td>';
+    h+='</tr>';
+  });
+  h+='</tbody></table>';
+  document.getElementById('challengesList').innerHTML=h;
 }
 
 // ============================================
