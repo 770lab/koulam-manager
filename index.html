@@ -108,6 +108,7 @@ body{font-family:'Inter',sans-serif;background:#0f172a;color:#e2e8f0;min-height:
     <li class="nav-item" onclick="switchTab('etudes')">📖 <span>Etudes</span></li>
     <li class="nav-item" onclick="switchTab('tehilim')">🕊️ <span>Tehilim</span></li>
     <li class="nav-item" onclick="switchTab('tefila')">🙏 <span>Tefila</span></li>
+    <li class="nav-item" onclick="switchTab('minyan')">🕍 <span>Minyan</span></li>
     <li class="nav-item" onclick="switchTab('objectifs')">🎯 <span>Objectifs</span></li>
     <li class="nav-item" onclick="switchTab('shopify')">🛍️ <span>Chabad Club</span></li>
   </ul>
@@ -276,6 +277,32 @@ body{font-family:'Inter',sans-serif;background:#0f172a;color:#e2e8f0;min-height:
   </div>
 </div>
 
+<!-- MINYAN -->
+<div class="tab" id="tab-minyan">
+  <div class="page-title">🕍 Minyan</div>
+  <div id="minyanKpis"></div>
+  <div class="chart-grid">
+    <div class="card">
+      <div class="card-title">📅 Demandes de Minyan par jour</div>
+      <div class="chart-container"><canvas id="chartMinyanTimeline"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">📊 Minyanim par type de priere</div>
+      <div class="chart-container"><canvas id="chartMinyanTypes"></canvas></div>
+    </div>
+  </div>
+  <div class="chart-grid">
+    <div class="card">
+      <div class="card-title">👥 Groupes Minyan</div>
+      <div id="minyanGroupsList"><div class="loading">...</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">🕐 Dernieres demandes</div>
+      <div id="minyanRequestsList"><div class="loading">...</div></div>
+    </div>
+  </div>
+</div>
+
 <!-- OBJECTIFS -->
 <div class="tab" id="tab-objectifs">
   <div class="page-title">🎯 Objectifs quotidiens</div>
@@ -365,7 +392,7 @@ var FIREBASE_CONFIG = {
 firebase.initializeApp(FIREBASE_CONFIG);
 var db = firebase.firestore();
 var _allUsers=[], _allPosts=[], _allVideos=[], _allNotifs=[];
-var _allTehilim=[], _allStudies=[], _allPrayers=[], _allObjectives=[], _allMinyanim=[], _allChains=[];
+var _allTehilim=[], _allStudies=[], _allPrayers=[], _allObjectives=[], _allMinyanim=[], _allChains=[], _allMinyanGroups=[];
 var _charts = {};
 
 // Chart.js dark theme defaults
@@ -493,11 +520,19 @@ async function loadAll(){
       mSnap.forEach(function(d){var m=d.data();m._id=d.id;_allMinyanim.push(m);});
     }catch(e){console.warn('[MINYANIM]',e.message);_allMinyanim=[];}
 
+    // Minyan groups
+    try{
+      var mgSnap=await db.collection('minyan_groups').get();
+      _allMinyanGroups=[];
+      mgSnap.forEach(function(d){var g=d.data();g._id=d.id;_allMinyanGroups.push(g);});
+    }catch(e){console.warn('[MINYAN_GROUPS]',e.message);_allMinyanGroups=[];}
+
     var statusParts=[_allUsers.length+' users',_allPosts.length+' posts'];
     if(_allTehilim.length) statusParts.push(_allTehilim.length+' tehilim');
     if(_allStudies.length) statusParts.push(_allStudies.length+' etudes');
     if(_allPrayers.length) statusParts.push(_allPrayers.length+' prieres');
     if(_allObjectives.length) statusParts.push(_allObjectives.length+' objectifs');
+    if(_allMinyanGroups.length) statusParts.push(_allMinyanGroups.length+' groupes minyan');
 
     document.getElementById('fbStatus').innerHTML='<span style="color:#22c55e;">✅ Firebase OK</span><br>'+statusParts.join(' · ');
 
@@ -509,6 +544,7 @@ async function loadAll(){
     renderEtudesTab();
     renderTehilimTab();
     renderTefilaTab();
+    renderMinyanTab();
     renderObjectifsTab();
   }catch(err){
     document.getElementById('fbStatus').innerHTML='<span style="color:#ef4444;">❌ '+err.message+'</span>';
@@ -929,6 +965,134 @@ function renderTefilaTab(){
     });
   }
   document.getElementById('tefilaMinyanim').innerHTML=mh;
+}
+
+// ============================================
+// MINYAN TAB
+// ============================================
+function renderMinyanTab(){
+  // Resolve user names from _allUsers
+  function userName(uid){
+    var u=_allUsers.find(function(x){return x.uid===uid||x._id===uid;});
+    if(u) return u.displayName||u.prenom||u.email||uid;
+    return uid?uid.substring(0,8)+'...':'?';
+  }
+
+  // KPIs
+  var totalGroups=_allMinyanGroups.length;
+  var totalRequests=_allMinyanim.length;
+  var allMemberUids={};
+  _allMinyanGroups.forEach(function(g){
+    (g.members||[]).forEach(function(uid){allMemberUids[uid]=true;});
+  });
+  var totalMembers=Object.keys(allMemberUids).length;
+  var weekAgo=Date.now()-7*86400000;
+  var requestsThisWeek=0;
+  _allMinyanim.forEach(function(m){if(toTs(m.createdAt)>weekAgo) requestsThisWeek++;});
+
+  // Biggest group
+  var biggestGroup='--',biggestSize=0;
+  _allMinyanGroups.forEach(function(g){
+    var s=(g.members||[]).length;
+    if(s>biggestSize){biggestSize=s;biggestGroup=g.name||'Sans nom';}
+  });
+
+  var kh='';
+  if(totalGroups===0 && totalRequests===0){
+    kh='<div class="info-box">⚠️ Aucune donnee Minyan trouvee. Les groupes sont dans <strong>minyan_groups</strong> et les demandes dans <strong>minyan_requests</strong>.</div>';
+  }
+  kh+='<div class="kpi-grid">';
+  kh+='<div class="kpi" style="background:linear-gradient(135deg,#6366f1,#4338ca);"><div class="kpi-value">'+totalGroups+'</div><div class="kpi-label">Groupes</div></div>';
+  kh+='<div class="kpi" style="background:linear-gradient(135deg,#3b82f6,#1d4ed8);"><div class="kpi-value">'+totalMembers+'</div><div class="kpi-label">Membres uniques</div></div>';
+  kh+='<div class="kpi" style="background:linear-gradient(135deg,#14b8a6,#0f766e);"><div class="kpi-value">'+totalRequests+'</div><div class="kpi-label">Demandes</div><div class="kpi-sub">+'+requestsThisWeek+' cette semaine</div></div>';
+  kh+='<div class="kpi" style="background:linear-gradient(135deg,#f59e0b,#b45309);"><div class="kpi-value">'+esc(biggestGroup.substring(0,12))+'</div><div class="kpi-label">Plus gros groupe</div><div class="kpi-sub">'+biggestSize+' membres</div></div>';
+  kh+='</div>';
+  document.getElementById('minyanKpis').innerHTML=kh;
+
+  // Timeline chart — requests per day
+  var dateMap={};
+  _allMinyanim.forEach(function(m){var k=toDayKey(m.createdAt);if(k)dateMap[k]=(dateMap[k]||0)+1;});
+  var keys=Object.keys(dateMap).sort();
+  destroyChart('chartMinyanTimeline');
+  if(keys.length>0){
+    _charts['chartMinyanTimeline']=new Chart(document.getElementById('chartMinyanTimeline').getContext('2d'),{
+      type:'line',data:{labels:keys.map(dayKeyToLabel),datasets:[{label:'Demandes',data:keys.map(function(k){return dateMap[k];}),borderColor:'#6366f1',backgroundColor:'rgba(99,102,241,0.15)',fill:true,tension:0.4,pointRadius:3}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}
+    });
+  }
+
+  // Prayer types chart
+  var typeCount={};
+  _allMinyanim.forEach(function(m){var p=m.prayer||'autre';typeCount[p]=(typeCount[p]||0)+1;});
+  var typeKeys=Object.keys(typeCount);
+  var typeColors=['#6366f1','#3b82f6','#14b8a6','#f59e0b','#ef4444','#ec4899'];
+  destroyChart('chartMinyanTypes');
+  if(typeKeys.length>0){
+    _charts['chartMinyanTypes']=new Chart(document.getElementById('chartMinyanTypes').getContext('2d'),{
+      type:'doughnut',data:{labels:typeKeys.map(function(k){return{chaharit:'Chaharit',minha:'Minha',arvit:'Arvit'}[k]||k;}),datasets:[{data:typeKeys.map(function(k){return typeCount[k];}),backgroundColor:typeColors.slice(0,typeKeys.length)}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{padding:12,font:{size:11}}}}}
+    });
+  }
+
+  // Groups list with member names
+  var gh='';
+  if(_allMinyanGroups.length===0){
+    gh='<div class="loading">Aucun groupe</div>';
+  } else {
+    _allMinyanGroups.sort(function(a,b){return(b.members||[]).length-(a.members||[]).length;});
+    _allMinyanGroups.forEach(function(g){
+      var typeLabel=g.type==='synagogue'?'Synagogue':'Amis';
+      var typeColor=g.type==='synagogue'?'#6366f1':'#ec4899';
+      var memberNames=(g.members||[]).map(function(uid){return userName(uid);});
+      gh+='<div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.04);">';
+      gh+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">';
+      gh+='<div style="display:flex;align-items:center;gap:8px;">';
+      gh+='<span class="badge" style="background:'+typeColor+';">'+typeLabel+'</span>';
+      gh+='<span style="font-size:13px;font-weight:700;">'+esc(g.name||'Sans nom')+'</span>';
+      gh+='</div>';
+      gh+='<span style="font-size:11px;color:#64748b;">'+(g.members||[]).length+' membre'+(((g.members||[]).length)>1?'s':'')+'</span>';
+      gh+='</div>';
+      gh+='<div style="font-size:11px;color:#94a3b8;display:flex;gap:4px;flex-wrap:wrap;">';
+      gh+='<span style="color:#64748b;margin-right:2px;">Code:</span><strong style="letter-spacing:1px;color:#e2e8f0;">'+(g.inviteCode||'--')+'</strong>';
+      gh+='<span style="margin:0 6px;color:rgba(255,255,255,0.1);">|</span>';
+      memberNames.forEach(function(n){
+        gh+='<span style="background:rgba(99,102,241,0.15);color:#a5b4fc;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:600;">'+esc(n)+'</span>';
+      });
+      gh+='</div>';
+      gh+='</div>';
+    });
+  }
+  document.getElementById('minyanGroupsList').innerHTML=gh;
+
+  // Recent requests
+  var rh='';
+  if(_allMinyanim.length===0){
+    rh='<div class="loading">Aucune demande</div>';
+  } else {
+    var sorted=_allMinyanim.slice().sort(function(a,b){return toTs(b.createdAt)-toTs(a.createdAt);});
+    sorted.slice(0,15).forEach(function(m){
+      var prayerNames={chaharit:'Chaharit',minha:'Minha',arvit:'Arvit'};
+      var prayerColor={chaharit:'#f59e0b',minha:'#3b82f6',arvit:'#8b5cf6'};
+      var prayer=m.prayer||'autre';
+      var confirmed=(m.confirmed||[]).length;
+      var needed=m.needed||10;
+      var pct=Math.min(100,Math.round((confirmed/needed)*100));
+      rh+='<div style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);">';
+      rh+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">';
+      rh+='<div style="display:flex;align-items:center;gap:8px;">';
+      rh+='<span class="badge" style="background:'+(prayerColor[prayer]||'#6366f1')+';">'+(prayerNames[prayer]||prayer)+'</span>';
+      rh+='<span style="font-size:12px;">'+esc(m.synagogue||m.authorName||'Lieu non precise')+'</span>';
+      rh+='</div>';
+      rh+='<span style="font-size:11px;color:#64748b;">'+esc(m.time||'--')+'</span>';
+      rh+='</div>';
+      rh+='<div style="display:flex;align-items:center;gap:8px;">';
+      rh+='<div class="stat-bar-bg" style="flex:1;"><div class="stat-bar" style="width:'+pct+'%;background:'+(pct>=100?'#22c55e':'#6366f1')+';"></div></div>';
+      rh+='<span style="font-size:11px;font-weight:600;color:'+(pct>=100?'#22c55e':'#94a3b8')+';">'+confirmed+'/'+needed+'</span>';
+      rh+='</div>';
+      rh+='</div>';
+    });
+  }
+  document.getElementById('minyanRequestsList').innerHTML=rh;
 }
 
 // ============================================
