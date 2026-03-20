@@ -1204,17 +1204,98 @@ function renderObjectifsTab(){
 // USERS
 // ============================================
 function renderUsers(){
-  var h='<table class="tbl"><thead><tr><th>Avatar</th><th>Nom</th><th>Email</th><th>Bio</th><th>Followers</th><th>Following</th><th>Posts</th><th>Inscrit</th></tr></thead><tbody>';
-  _allUsers.sort(function(a,b){return (b.followersCount||0)-(a.followersCount||0);});
+  // Pre-compute stats per user
+  var userTehilim={}, userPrayers={}, userStudies={}, userObjectifs={}, userObjCompleted={}, userGroups={};
+  _allTehilim.forEach(function(t){
+    var uid=t.userId||t.uid||'';
+    if(uid) userTehilim[uid]=(userTehilim[uid]||0)+1;
+  });
+  _allPrayers.forEach(function(p){
+    var uid=p.userId||p.uid||'';
+    if(uid) userPrayers[uid]=(userPrayers[uid]||0)+1;
+  });
+  _allStudies.forEach(function(s){
+    var uid=s.userId||s.uid||'';
+    if(uid) userStudies[uid]=(userStudies[uid]||0)+1;
+  });
+  _allObjectives.forEach(function(o){
+    var uid=o.userId||o.uid||'';
+    if(uid){
+      userObjectifs[uid]=(userObjectifs[uid]||0)+1;
+      var completed=0;
+      ['modeh','brakhot','tsedaka_am','tefila','tehilim','etude_am','casher','tsedaka_pm','minha','minyan','arvit','etude_pm','famille','transmission'].forEach(function(k){if(o[k])completed++;});
+      userObjCompleted[uid]=(userObjCompleted[uid]||0)+completed;
+    }
+  });
+  _allMinyanGroups.forEach(function(g){
+    (g.members||[]).forEach(function(uid){
+      if(!userGroups[uid]) userGroups[uid]=[];
+      userGroups[uid].push(g.name||'Sans nom');
+    });
+  });
+
+  var h='<table class="tbl"><thead><tr>';
+  h+='<th>Avatar</th><th>Nom</th><th>Email</th>';
+  h+='<th style="text-align:center;">Posts</th>';
+  h+='<th style="text-align:center;">Tehilim</th>';
+  h+='<th style="text-align:center;">Prieres</th>';
+  h+='<th style="text-align:center;">Etudes</th>';
+  h+='<th style="text-align:center;">Objectifs</th>';
+  h+='<th>Groupes Minyan</th>';
+  h+='<th style="text-align:center;">Followers</th>';
+  h+='<th>Inscrit</th>';
+  h+='</tr></thead><tbody>';
+
+  _allUsers.sort(function(a,b){
+    var sa=(userTehilim[a.uid]||0)+(userPrayers[a.uid]||0)+(userStudies[a.uid]||0)+(userObjCompleted[a.uid]||0);
+    var sb=(userTehilim[b.uid]||0)+(userPrayers[b.uid]||0)+(userStudies[b.uid]||0)+(userObjCompleted[b.uid]||0);
+    return sb-sa;
+  });
+
   _allUsers.forEach(function(u){
+    var uid=u.uid||u._id||'';
+    var teh=userTehilim[uid]||0;
+    var pray=userPrayers[uid]||0;
+    var study=userStudies[uid]||0;
+    var objDays=userObjectifs[uid]||0;
+    var objDone=userObjCompleted[uid]||0;
+    var groups=userGroups[uid]||[];
+    var activity=teh+pray+study+objDone;
+
     h+='<tr>';
     h+='<td><img src="'+(u.photoURL||'https://ui-avatars.com/api/?name='+encodeURIComponent(u.displayName||'?')+'&background=3b82f6&color=fff&size=28')+'" style="width:28px;height:28px;border-radius:50%;object-fit:cover;"></td>';
     h+='<td style="font-weight:600;">'+esc(u.displayName||'--')+'</td>';
     h+='<td style="color:#64748b;font-size:11px;">'+esc(u.email||'--')+'</td>';
-    h+='<td style="color:#94a3b8;font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(u.bio||'')+'</td>';
-    h+='<td style="text-align:center;">'+(u.followersCount||0)+'</td>';
-    h+='<td style="text-align:center;">'+(u.followingCount||0)+'</td>';
     h+='<td style="text-align:center;">'+(u.postsCount||0)+'</td>';
+    // Tehilim
+    h+='<td style="text-align:center;">';
+    if(teh>0) h+='<span style="background:rgba(20,184,166,0.15);color:#14b8a6;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700;">'+teh+'</span>';
+    else h+='<span style="color:#475569;">0</span>';
+    h+='</td>';
+    // Prieres
+    h+='<td style="text-align:center;">';
+    if(pray>0) h+='<span style="background:rgba(99,102,241,0.15);color:#818cf8;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700;">'+pray+'</span>';
+    else h+='<span style="color:#475569;">0</span>';
+    h+='</td>';
+    // Etudes
+    h+='<td style="text-align:center;">';
+    if(study>0) h+='<span style="background:rgba(245,158,11,0.15);color:#f59e0b;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700;">'+study+'</span>';
+    else h+='<span style="color:#475569;">0</span>';
+    h+='</td>';
+    // Objectifs
+    h+='<td style="text-align:center;">';
+    if(objDays>0) h+='<span style="background:rgba(236,72,153,0.15);color:#ec4899;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700;">'+objDone+'<span style="opacity:0.6;font-weight:400;">/'+objDays+'j</span></span>';
+    else h+='<span style="color:#475569;">0</span>';
+    h+='</td>';
+    // Groupes minyan
+    h+='<td style="font-size:10px;">';
+    if(groups.length>0){
+      groups.forEach(function(g){
+        h+='<span style="background:rgba(99,102,241,0.15);color:#a5b4fc;padding:2px 6px;border-radius:4px;margin-right:3px;font-weight:600;">'+esc(g)+'</span>';
+      });
+    } else { h+='<span style="color:#475569;">--</span>'; }
+    h+='</td>';
+    h+='<td style="text-align:center;">'+(u.followersCount||0)+'</td>';
     h+='<td style="font-size:11px;color:#64748b;">'+fmtDate(u.createdAt)+'</td>';
     h+='</tr>';
   });
